@@ -95,7 +95,8 @@ program
   .command('full-monty')
   .description('Generate comprehensive documentation with all features')
   .argument('[path]', 'Path to document comprehensively')
-  .action(async (targetPath) => {
+  .option('-v, --verbose', 'Enable verbose output')
+  .action(async (targetPath, options) => {
     try {
       const config = new ConfigManager();
       const configData = await config.loadConfig();
@@ -104,7 +105,7 @@ program
       const pathToUse = targetPath || configData.defaultTargetPath || process.cwd();
       const resolvedPath = path.resolve(pathToUse);
       
-      const generator = new FullMontyGenerator();
+      const generator = new FullMontyGenerator(options.verbose || false);
       
       const report = await generator.generate(resolvedPath);
       
