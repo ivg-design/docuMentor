@@ -6,7 +6,7 @@ import { ConfigManager } from './ConfigManager';
 import { ProgressMonitor } from './ProgressMonitor';
 import { SafetyValidator } from './SafetyValidator';
 import { GitHubMonitor } from './GitHubMonitor';
-import { FullMontyGenerator } from './FullMontyGenerator';
+import { FullMontyGeneratorV2 } from './FullMontyGeneratorV2';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import * as os from 'os';
@@ -105,7 +105,7 @@ program
       const pathToUse = targetPath || configData.defaultTargetPath || process.cwd();
       const resolvedPath = path.resolve(pathToUse);
       
-      const generator = new FullMontyGenerator(options.verbose || false);
+      const generator = new FullMontyGeneratorV2(options.verbose || false);
       
       const report = await generator.generate(resolvedPath);
       
