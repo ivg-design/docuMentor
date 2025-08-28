@@ -1,0 +1,40 @@
+{
+  "name": "documentor",
+  "version": "2.0.0",
+  "description": "DocuMentor - Comprehensive documentation generator with Obsidian integration, safety validation, and GitHub monitoring",
+  "main": "dist/index.js",
+  "bin": {
+    "documentor": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node src/index.ts",
+    "start": "node dist/index.js",
+    "clean": "rm -rf dist",
+    "prepare": "npm run build",
+    "test": "echo \"No tests yet\""
+  },
+  "keywords": [
+    "documentation",
+    "generator",
+    "obsidian",
+    "markdown",
+    "code-analysis",
+    "claude",
+    "ai"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/claude-code": "^1.0.0",
+    "commander": "^11.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
