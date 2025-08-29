@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import { DocumentationAgent } from './DocumentationAgent';
+import { FixedDocumentationAgent } from './FixedDocumentationAgent';
 import { ConfigManager } from './ConfigManager';
-import { ProgressMonitor } from './ProgressMonitor';
+// import { ProgressMonitor } from './ProgressMonitor'; // Removed - using AdvancedTerminalUI instead
 import { SafetyValidator } from './SafetyValidator';
 import { GitHubMonitor } from './GitHubMonitor';
-import { FullMontyGeneratorV2 } from './FullMontyGeneratorV2';
+import { FullMontyGeneratorV3 } from './FullMontyGeneratorV3';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import * as os from 'os';
@@ -31,7 +31,7 @@ program
     try {
       const config = new ConfigManager();
       const safety = new SafetyValidator();
-      const progress = new ProgressMonitor();
+      // const progress = new ProgressMonitor(); // Not needed with AdvancedTerminalUI
       
       // Load configuration first to get defaultTargetPath
       const configData = await config.loadConfig();
@@ -50,12 +50,12 @@ program
       // Validate target
       const validation = await safety.validateDirectory(resolvedPath);
       if (!validation.valid) {
-        console.error(`❌ Error: ${validation.errors.join(', ')}`);
+        console.error(`[ERROR] ${validation.errors.join(', ')}`);
         process.exit(1);
       }
       
       // Create agent with config
-      const agent = new DocumentationAgent({
+      const agent = new FixedDocumentationAgent({
         targetPath: resolvedPath,
         outputPath: options.output || configData.obsidianVaultPath,
         verifyCode: options.verify !== false,
@@ -64,28 +64,22 @@ program
       });
 
       // Set up interrupt handling
-      progress.on('interrupt', async () => {
-        console.log('⚠️ Documentation interrupted. Saving progress...');
-        const state = progress.getProgress();
-        await fs.writeFile(
-          path.join(os.homedir(), '.documentor', 'interrupted-state.json'),
-          JSON.stringify(state, null, 2)
-        );
+      process.on('SIGINT', async () => {
+        console.log('[WARN] Documentation interrupted. Saving progress...');
+        // State is saved by SimpleLockFile
         process.exit(0);
       });
 
       await agent.generateDocumentation();
-      progress.displaySummary();
-      progress.cleanup();
       
       console.log(`
-✨ Documentation generation complete!
-📚 View your documentation in Obsidian at:
+[SUCCESS] Documentation generation complete!
+[INFO] View your documentation in Obsidian at:
    ${options.output || configData.obsidianVaultPath}
       `);
       
     } catch (error) {
-      console.error('❌ Fatal error:', error);
+      console.error('[FATAL]', error);
       process.exit(1);
     }
   });
@@ -105,7 +99,7 @@ program
       const pathToUse = targetPath || configData.defaultTargetPath || process.cwd();
       const resolvedPath = path.resolve(pathToUse);
       
-      const generator = new FullMontyGeneratorV2(options.verbose || false);
+      const generator = new FullMontyGeneratorV3(options.verbose || false);
       
       const report = await generator.generate(resolvedPath);
       
@@ -114,10 +108,10 @@ program
       await fs.mkdir(path.dirname(reportPath), { recursive: true });
       await fs.writeFile(reportPath, JSON.stringify(report, null, 2));
       
-      console.log(`\n📊 Report saved to: ${reportPath}`);
+      console.log(`\n[INFO] Report saved to: ${reportPath}`);
       
     } catch (error) {
-      console.error('❌ Full Monty failed:', error);
+      console.error('[ERROR] Full Monty failed:', error);
       process.exit(1);
     }
   });
@@ -159,9 +153,9 @@ program
       
       if (options.list) {
         const status = monitor.getStatus();
-        console.log('\n📚 Monitored Repositories:');
+        console.log('\n[INFO] Monitored Repositories:');
         status.repositories.forEach((repo: any) => {
-          console.log(`  • ${repo.owner}/${repo.repo} (${repo.branch})`);
+          console.log(`  - ${repo.owner}/${repo.repo} (${repo.branch})`);
           console.log(`    Last checked: ${repo.lastChecked || 'Never'}`);
         });
       }
@@ -207,7 +201,7 @@ program
         const configData = await config.getConfig();
         configData.defaultTargetPath = newPath;
         await config.updateConfig(configData);
-        console.log(`✅ Default target path updated to: ${newPath}`);
+        console.log(`[OK] Default target path updated to: ${newPath}`);
         return;
       }
       
@@ -216,20 +210,20 @@ program
         const configData = await config.getConfig();
         configData.obsidianVaultPath = newPath;
         await config.updateConfig(configData);
-        console.log(`✅ Obsidian vault path updated to: ${newPath}`);
+        console.log(`[OK] Obsidian vault path updated to: ${newPath}`);
         return;
       }
       
       if (options.show || (!options.edit && !options.validate && !options.reset)) {
         const configData = await config.getConfig();
-        console.log('\n📋 Current Configuration:');
+        console.log('\n[CONFIG] Current Configuration:');
         console.log('========================');
-        console.log(`📁 Default Target Path: ${configData.defaultTargetPath}`);
-        console.log(`📚 Obsidian Vault Path: ${configData.obsidianVaultPath}`);
-        console.log(`🔗 GitHub Enabled: ${configData.github.enabled}`);
-        console.log(`🏷️  Max Tags: ${configData.maxTags}`);
-        console.log(`🛡️  Safety Mode: ${configData.safetyMode.enabled}`);
-        console.log('\n💡 Use --edit to modify or --validate to check');
+        console.log(`[Default Path] ${configData.defaultTargetPath}`);
+        console.log(`[Vault Path] ${configData.obsidianVaultPath}`);
+        console.log(`[GitHub] Enabled: ${configData.github.enabled}`);
+        console.log(`[Max Tags] ${configData.maxTags}`);
+        console.log(`[Safety Mode] ${configData.safetyMode.enabled}`);
+        console.log('\n[TIP] Use --edit to modify or --validate to check');
         console.log('   Use --set-path <path> to change default target');
         console.log('   Use --set-vault <path> to change vault location');
         return;
@@ -245,16 +239,16 @@ program
       if (options.validate) {
         const validation = await config.validateConfig();
         if (validation.valid) {
-          console.log('✅ Configuration is valid');
+          console.log('[OK] Configuration is valid');
         } else {
-          console.log('❌ Configuration errors:');
-          validation.errors.forEach(err => console.log(`  • ${err}`));
+          console.log('[ERROR] Configuration errors:');
+          validation.errors.forEach(err => console.log(`  - ${err}`));
         }
       }
       
       if (options.reset) {
         await config.createDefaultConfig();
-        console.log('✅ Configuration reset to defaults');
+        console.log('[OK] Configuration reset to defaults');
       }
       
     } catch (error) {
@@ -278,28 +272,28 @@ program
       
       if (options.check) {
         const validation = await safety.validateDirectory(options.check);
-        console.log('\n🔒 Safety Check Results:');
-        console.log(`Valid: ${validation.valid ? '✅' : '❌'}`);
+        console.log('\n[SAFETY] Check Results:');
+        console.log(`Valid: ${validation.valid ? '[YES]' : '[NO]'}`);
         
         if (validation.errors.length > 0) {
           console.log('\nErrors:');
-          validation.errors.forEach(err => console.log(`  ❌ ${err}`));
+          validation.errors.forEach(err => console.log(`  [ERROR] ${err}`));
         }
         
         if (validation.warnings.length > 0) {
           console.log('\nWarnings:');
-          validation.warnings.forEach(warn => console.log(`  ⚠️ ${warn}`));
+          validation.warnings.forEach(warn => console.log(`  [WARN] ${warn}`));
         }
         
         if (validation.suggestions.length > 0) {
           console.log('\nSuggestions:');
-          validation.suggestions.forEach(sug => console.log(`  💡 ${sug}`));
+          validation.suggestions.forEach(sug => console.log(`  [TIP] ${sug}`));
         }
       }
       
       if (options.backup) {
         const backupPath = await safety.createBackup(options.backup);
-        console.log(`✅ Backup created: ${backupPath}`);
+        console.log(`[OK] Backup created: ${backupPath}`);
       }
       
       if (options.restore) {
@@ -310,7 +304,7 @@ program
       
       if (options.cleanup) {
         const deleted = await safety.cleanupBackups(7);
-        console.log(`🧹 Cleaned up ${deleted} old backups`);
+        console.log(`[CLEAN] Removed ${deleted} old backups`);
       }
       
       if (options.report) {
@@ -329,10 +323,9 @@ program
   .description('Generate documentation for DocuMentor itself')
   .action(async () => {
     try {
-      console.log('📚 Self-documenting DocuMentor...');
-      
       const docuMentorPath = path.join(os.homedir(), 'github/docuMentor');
-      const generator = new FullMontyGenerator();
+      const { FullMontyGeneratorV3 } = await import('./FullMontyGeneratorV3');
+      const generator = new FullMontyGeneratorV3(true);
       
       // Generate comprehensive documentation
       const report = await generator.generate(docuMentorPath);
@@ -377,7 +370,7 @@ DocuMentor is a comprehensive documentation generator that analyzes codebases, v
 ### Components
 - **DocumentationAgent**: Core documentation engine
 - **ConfigManager**: Configuration handling with auto-generation
-- **ProgressMonitor**: Real-time progress tracking with interrupts
+- **AdvancedTerminalUI**: Real-time progress tracking with dashboard
 - **SafetyValidator**: File integrity and safety checks
 - **GitHubMonitor**: Repository change tracking
 - **FullMontyGenerator**: Comprehensive analysis generator
@@ -393,7 +386,7 @@ docuMentor/
 │   ├── index.ts              # CLI interface
 │   ├── DocumentationAgent.ts  # Core agent
 │   ├── ConfigManager.ts      # Configuration
-│   ├── ProgressMonitor.ts    # Progress tracking
+│   ├── AdvancedTerminalUI.ts # Terminal dashboard
 │   ├── SafetyValidator.ts    # Safety checks
 │   ├── GitHubMonitor.ts      # GitHub integration
 │   ├── FullMontyGenerator.ts # Comprehensive docs
@@ -539,7 +532,7 @@ Contributions welcome! The project uses:
       await fs.mkdir(targetPath, { recursive: true });
       await fs.writeFile(path.join(targetPath, 'README.md'), selfDoc);
       
-      console.log('✅ Self-documentation complete!');
+      console.log('[OK] Self-documentation complete!');
       
     } catch (error) {
       console.error('❌ Self-documentation failed:', error);
@@ -557,8 +550,8 @@ program
       const resolvedPath = path.resolve(targetPath);
       
       console.log(`
-🔬 Code Verification Mode
-📁 Target: ${resolvedPath}
+[VERIFY] Code Verification Mode
+[TARGET] ${resolvedPath}
       `);
 
       const { CodeVerifier } = await import('./CodeVerifier');
@@ -589,8 +582,8 @@ program
       const resolvedPath = path.resolve(targetPath);
       
       console.log(`
-🔍 Project Analysis Mode
-📁 Target: ${resolvedPath}
+[ANALYZE] Project Analysis Mode
+[TARGET] ${resolvedPath}
       `);
 
       const { ProjectAnalyzer } = await import('./ProjectAnalyzer');
@@ -598,7 +591,7 @@ program
       const analyzer = new ProjectAnalyzer();
       const analysis = await analyzer.analyze(resolvedPath);
       
-      console.log('\n📊 Analysis Results:');
+      console.log('\n[RESULTS] Analysis Results:');
       console.log(JSON.stringify(analysis, null, 2));
       
     } catch (error) {
@@ -615,28 +608,30 @@ program
   .option('--scan', 'Scan vault for tags')
   .action(async (options) => {
     try {
-      const { TagManager } = await import('./TagManager');
+      const { SmartTagManager } = await import('./SmartTagManager');
       const vaultPath = path.join(os.homedir(), 'github/obsidian_vault/docs');
       
-      const tagManager = new TagManager(vaultPath);
+      const tagManager = new SmartTagManager(vaultPath, 'manual');
       await tagManager.loadExistingTags();
       
       if (options.generateIndex) {
-        const index = await tagManager.generateTagIndex();
+        const stats = tagManager.getStatistics();
+        const index = `# Tag Index\n\nTotal tags: ${stats.totalTags}\n\nTop Tags:\n${stats.topTags.map((t: string) => `- ${t}`).join('\n')}`;
         const indexPath = path.join(vaultPath, 'tag-index.md');
         await fs.writeFile(indexPath, index);
-        console.log(`✅ Tag index generated at: ${indexPath}`);
+        console.log(`[OK] Tag index generated at: ${indexPath}`);
       }
       
       if (options.scan) {
         await tagManager.loadExistingTags();
-        await tagManager.saveTagRegistry();
-        console.log('✅ Tag scan complete');
+        await tagManager.saveRegistry();
+        console.log('[OK] Tag scan complete');
       }
       
       if (!options.generateIndex && !options.scan) {
-        const index = await tagManager.generateTagIndex();
-        console.log(index);
+        const stats = tagManager.getStatistics();
+        console.log(`Total tags: ${stats.totalTags}`);
+        console.log(`Top tags: ${stats.topTags.join(', ')}`);
       }
       
     } catch (error) {

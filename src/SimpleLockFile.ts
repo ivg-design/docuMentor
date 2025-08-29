@@ -1,4 +1,5 @@
 import * as fs from 'fs/promises';
+import * as fsSync from 'fs';
 import * as path from 'path';
 
 export interface LockFileData {
@@ -15,6 +16,7 @@ export interface LockFileData {
 export class SimpleLockFile {
   private lockFilePath: string;
   private updateInterval: NodeJS.Timeout | null = null;
+  private cleanupInProgress = false;
   
   constructor(targetPath: string) {
     // Place .documentor.lock in the target directory being documented
@@ -115,6 +117,24 @@ export class SimpleLockFile {
   }
   
   /**
+   * Update lock file synchronously (for exit handlers)
+   */
+  private updateLockSync(updates: Partial<LockFileData>): void {
+    try {
+      const content = fsSync.readFileSync(this.lockFilePath, 'utf-8');
+      const current: LockFileData = JSON.parse(content);
+      const updated = {
+        ...current,
+        ...updates,
+        lastUpdate: this.getLocalTimeString()
+      };
+      fsSync.writeFileSync(this.lockFilePath, JSON.stringify(updated, null, 2));
+    } catch (error) {
+      // Lock file might not exist or can't be updated
+    }
+  }
+  
+  /**
    * Mark as completed
    */
   async completeLock(): Promise<void> {
@@ -182,41 +202,132 @@ export class SimpleLockFile {
   }
   
   /**
-   * Setup cleanup handlers
+   * Setup cleanup handlers for ALL termination scenarios
    */
   private setupCleanupHandlers(): void {
     const cleanup = async (signal: string) => {
+      if (this.cleanupInProgress) return;
+      this.cleanupInProgress = true;
+      
       console.log(`\nReceived ${signal}, updating lock file...`);
+      
+      // Get current lock state
+      const current = await this.readLock();
+      
       await this.updateLock({
         status: 'interrupted',
-        error: `Process interrupted by ${signal}`
+        error: `Process interrupted by ${signal} at ${this.getLocalTimeString()}`,
+        currentPhase: current?.currentPhase || 'unknown',
+        progress: current?.progress || 0,
+        completedTasks: current?.completedTasks || []
       });
+      
       this.stopAutoUpdate();
-      process.exit(0);
+      
+      // Give time for the update to write
+      setTimeout(() => process.exit(0), 100);
     };
     
-    // Handle various termination signals
-    process.on('SIGINT', () => cleanup('SIGINT'));
-    process.on('SIGTERM', () => cleanup('SIGTERM'));
+    // Handle common termination signals
+    process.on('SIGINT', () => cleanup('SIGINT (Ctrl+C)'));
+    process.on('SIGTERM', () => cleanup('SIGTERM (Kill signal)'));
+    process.on('SIGHUP', () => cleanup('SIGHUP (Terminal closed)'));
+    process.on('SIGUSR1', () => cleanup('SIGUSR1'));
+    process.on('SIGUSR2', () => cleanup('SIGUSR2'));
     
     // Handle uncaught exceptions
     process.on('uncaughtException', async (error) => {
+      if (this.cleanupInProgress) return;
+      this.cleanupInProgress = true;
+      
       console.error('Uncaught Exception:', error);
-      await this.failLock(error.message);
-      process.exit(1);
+      
+      const current = await this.readLock();
+      await this.updateLock({
+        status: 'failed',
+        error: `Crashed: ${error.message} at ${this.getLocalTimeString()}`,
+        currentPhase: current?.currentPhase || 'unknown',
+        progress: current?.progress || 0,
+        completedTasks: current?.completedTasks || []
+      });
+      
+      this.stopAutoUpdate();
+      setTimeout(() => process.exit(1), 100);
     });
     
     // Handle unhandled promise rejections
     process.on('unhandledRejection', async (reason, promise) => {
+      if (this.cleanupInProgress) return;
+      this.cleanupInProgress = true;
+      
       console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-      await this.failLock(String(reason));
-      process.exit(1);
+      
+      const current = await this.readLock();
+      await this.updateLock({
+        status: 'failed',
+        error: `Unhandled Promise Rejection: ${String(reason)} at ${this.getLocalTimeString()}`,
+        currentPhase: current?.currentPhase || 'unknown',
+        progress: current?.progress || 0,
+        completedTasks: current?.completedTasks || []
+      });
+      
+      this.stopAutoUpdate();
+      setTimeout(() => process.exit(1), 100);
     });
     
-    // Cleanup on normal exit
-    process.on('exit', () => {
+    // Handle process exit - MUST be synchronous!
+    process.on('exit', (code) => {
+      if (this.cleanupInProgress) return;
+      
       this.stopAutoUpdate();
+      
+      // If exiting abnormally and we haven't already updated status
+      if (code !== 0) {
+        try {
+          const content = fsSync.readFileSync(this.lockFilePath, 'utf-8');
+          const current: LockFileData = JSON.parse(content);
+          
+          if (current && current.status === 'running') {
+            // Process died without proper cleanup - use SYNC write
+            this.updateLockSync({
+              status: 'interrupted',
+              error: `Process exited unexpectedly with code ${code} at ${this.getLocalTimeString()}`,
+              currentPhase: current.currentPhase || 'unknown',
+              progress: current.progress || 0
+            });
+          }
+        } catch {
+          // Can't update lock file on exit
+        }
+      }
     });
+    
+    // Handle beforeExit event for cleaner async cleanup
+    process.on('beforeExit', async (code) => {
+      if (this.cleanupInProgress) return;
+      
+      const current = await this.readLock();
+      if (current && current.status === 'running') {
+        await this.updateLock({
+          status: 'interrupted',
+          error: `Process exiting with code ${code} at ${this.getLocalTimeString()}`,
+          currentPhase: current.currentPhase || 'unknown',
+          progress: current.progress || 0
+        });
+      }
+    });
+    
+    // Windows-specific signal handling
+    if (process.platform === 'win32') {
+      const readline = require('readline');
+      const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+      });
+      
+      rl.on('SIGINT', () => cleanup('SIGINT (Ctrl+C)'));
+      rl.on('close', () => cleanup('Terminal closed'));
+    }
   }
   
   /**

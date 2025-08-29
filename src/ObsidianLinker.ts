@@ -1,6 +1,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import crypto from 'crypto';
+import { ImprovedFrontmatterGenerator } from './ImprovedFrontmatterGenerator';
 
 export interface ObsidianDocument {
   path: string;
@@ -24,10 +25,12 @@ export class ObsidianLinker {
   private graph: LinkGraph;
   private vaultPath: string;
   private projectName: string;
+  private frontmatterGen: ImprovedFrontmatterGenerator;
   
   constructor(vaultPath: string, projectName: string) {
     this.vaultPath = vaultPath;
     this.projectName = projectName;
+    this.frontmatterGen = new ImprovedFrontmatterGenerator(projectName);
     this.graph = {
       documents: new Map(),
       tagIndex: new Map(),
@@ -139,32 +142,35 @@ export class ObsidianLinker {
     return linkedContent;
   }
   
-  // Generate frontmatter with all metadata
-  generateFrontmatter(doc: ObsidianDocument): string {
-    const frontmatter = {
-      id: doc.id,
+  // Generate COMPLETE frontmatter for document - EVERY FIELD MUST BE FILLED!
+  async generateFrontmatter(doc: ObsidianDocument): Promise<string> {
+    // Extract document names from backlinks and forwardLinks for counting
+    const backlinksArray = doc.backlinks.map(link => {
+      const match = link.match(/\[\[(.+?)\|/);
+      return match ? match[1] : link;
+    });
+    
+    const forwardLinksArray = doc.forwardLinks.map(link => {
+      const match = link.match(/\[\[(.+?)\|/);
+      return match ? match[1] : link;
+    });
+    
+    // ENSURE we have tags - NEVER allow empty tags!
+    const tags = doc.tags.length > 0 ? doc.tags : [this.projectName, 'documentation'];
+    
+    // ENSURE we have aliases - NEVER allow empty aliases!
+    const aliases = doc.aliases && doc.aliases.length > 0 ? doc.aliases : [doc.title];
+    
+    return await this.frontmatterGen.generateFrontmatter({
       title: doc.title,
-      tags: doc.tags,
-      aliases: doc.aliases || [],
-      created: doc.created.toISOString(),
-      updated: doc.updated.toISOString(),
+      type: 'documentation',
       project: this.projectName,
-      backlinks: doc.backlinks.length,
-      forwardLinks: doc.forwardLinks.length
-    };
-    
-    const yaml = Object.entries(frontmatter)
-      .map(([key, value]) => {
-        if (Array.isArray(value)) {
-          if (value.length === 0) return null;
-          return `${key}:\n${value.map(v => `  - ${v}`).join('\n')}`;
-        }
-        return `${key}: ${value}`;
-      })
-      .filter(line => line !== null)
-      .join('\n');
-    
-    return `---\n${yaml}\n---`;
+      tags: tags,
+      relatedFiles: forwardLinksArray,
+      backlinks: backlinksArray,
+      frontlinks: forwardLinksArray,
+      description: `Document for ${doc.title}`
+    });
   }
   
   // Generate backlinks section
@@ -444,5 +450,12 @@ ${this.getDocumentsByTag('core').map(d => `- [[${d.path}|${d.title}]]`).join('\n
     // Save document map
     const docMap = await this.generateDocumentMap();
     await fs.writeFile(path.join(indexPath, 'document-map.md'), docMap);
+  }
+  
+  /**
+   * Get all registered documents
+   */
+  getAllDocuments(): ObsidianDocument[] {
+    return Array.from(this.graph.documents.values());
   }
 }

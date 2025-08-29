@@ -54,7 +54,7 @@ export class CLIInterface {
       console.log(gradient.multiline(banner));
     } catch {
       // Fallback if figlet fails
-      console.log(gradient(title));
+      console.log(gradient.multiline(title));
     }
     
     if (subtitle) {

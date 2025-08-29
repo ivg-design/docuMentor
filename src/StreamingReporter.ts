@@ -1,4 +1,4 @@
-import { CLIInterface } from './CLIInterface';
+// import { CLIInterface } from './CLIInterface'; // Removed - old interface
 import { EventEmitter } from 'events';
 import * as readline from 'readline';
 
@@ -11,7 +11,7 @@ export interface StreamEvent {
 }
 
 export class StreamingReporter extends EventEmitter {
-  private cli: CLIInterface;
+  private cli: any; // Simplified - no longer using CLIInterface
   private currentLines: string[] = [];
   private maxLines: number = 10;
   private isStreaming: boolean = false;
@@ -26,7 +26,7 @@ export class StreamingReporter extends EventEmitter {
   private lastActivity: Date = new Date();
   private activityTimeout: number = 5000; // 5 seconds without activity = warning
   
-  constructor(cli: CLIInterface) {
+  constructor(cli: any) {
     super();
     this.cli = cli;
   }

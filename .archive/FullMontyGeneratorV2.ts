@@ -8,6 +8,7 @@ import { SimpleLockFile, withLockCheck } from './SimpleLockFile';
 import { MultiProjectAnalyzer, SubProject } from './MultiProjectAnalyzer';
 import { StreamingReporter } from './StreamingReporter';
 import { streamingClaudeQuery } from './EnhancedClaudeClient';
+import { SmartTagManager } from './SmartTagManager';
 
 export interface FullMontyReport {
   targetPath: string;
@@ -87,7 +88,7 @@ export class FullMontyGeneratorV2 {
         
         // Analyze project structure
         this.display.createTask('analyze', 'Analyzing Project Structure', 100);
-        const analyzer = new MultiProjectAnalyzer(this.streamer);
+        const analyzer = new MultiProjectAnalyzer(this.streamer, this.display);
         const structure = await analyzer.analyzeStructure(targetPath);
         this.report.projectType = structure.projectType;
         this.report.subProjects = structure.subProjects.length;
@@ -98,15 +99,55 @@ export class FullMontyGeneratorV2 {
         // Initialize Obsidian linker
         const linker = new ObsidianLinker(config.obsidianVaultPath, projectName);
         
+        // Initialize Smart Tag Manager
+        this.display.createTask('tags-init', 'Initializing Tag System', 100);
+        const tagManager = new SmartTagManager(config.obsidianVaultPath, projectName, this.display);
+        
+        // Load existing tags from vault
+        this.display.updateTask('tags-init', 30, 'Loading existing tags...');
+        await tagManager.loadExistingTags();
+        
+        // Load saved registry if exists
+        this.display.updateTask('tags-init', 60, 'Loading tag registry...');
+        await tagManager.loadRegistry();
+        
+        this.display.completeTask('tags-init', 'Tag system ready');
+        await lock.updateLock({ currentPhase: 'tag-initialization', progress: 25 });
+        
         if (structure.isMultiProject) {
           // Handle multi-project repository
-          await this.documentMultiProject(structure, config, linker, lock);
+          await this.documentMultiProject(structure, config, linker, lock, tagManager);
         } else {
           // Handle single project
-          await this.documentSingleProject(targetPath, config, linker, lock);
+          await this.documentSingleProject(targetPath, config, linker, lock, tagManager);
         }
         
-        // Generate indexes
+        // Tag review and consolidation
+        this.display.createTask('tag-review', 'Tag Review & Consolidation', 100);
+        this.display.updateTask('tag-review', 30, 'Analyzing tag usage...');
+        
+        const tagReview = await tagManager.reviewAndConsolidate();
+        
+        if (tagReview.consolidated.size > 0) {
+          this.display.stream(`🔄 Consolidated ${tagReview.consolidated.size} similar tags`);
+        }
+        if (tagReview.removed.length > 0) {
+          this.display.stream(`🗑️ Removed ${tagReview.removed.length} single-use tags`);
+        }
+        
+        // Save tag report
+        this.display.updateTask('tag-review', 60, 'Generating tag report...');
+        const tagReport = tagManager.generateTagReport();
+        const tagReportPath = path.join(config.obsidianVaultPath, projectName, 'TAG-REPORT.md');
+        await fs.writeFile(tagReportPath, tagReport);
+        
+        // Save tag registry for future runs
+        this.display.updateTask('tag-review', 80, 'Saving tag registry...');
+        await tagManager.saveRegistry();
+        
+        this.display.completeTask('tag-review', 'Tag consolidation complete');
+        
+        // Generate indexes (including updated tag index)
         this.display.createTask('indexes', 'Creating Obsidian Indexes', 100);
         this.display.updateTask('indexes', 50, 'Generating tag index...');
         await linker.saveIndexes();
@@ -148,7 +189,8 @@ export class FullMontyGeneratorV2 {
     structure: any,
     config: any,
     linker: ObsidianLinker,
-    lock: SimpleLockFile
+    lock: SimpleLockFile,
+    tagManager: SmartTagManager
   ): Promise<void> {
     this.display.log('info', `Processing ${structure.subProjects.length} subprojects`);
     
@@ -174,7 +216,7 @@ export class FullMontyGeneratorV2 {
       this.display.createTask(taskId, `Documenting: ${subProject.name}`, 100);
       
       // Document the subproject
-      await this.documentSubProject(subProject, config, linker, taskId);
+      await this.documentSubProject(subProject, config, linker, taskId, tagManager);
       
       this.display.completeTask(taskId, `${subProject.name} documented`);
       this.report.documentsGenerated += 4; // README, usage, technical, examples
@@ -188,7 +230,8 @@ export class FullMontyGeneratorV2 {
     subProject: SubProject,
     config: any,
     linker: ObsidianLinker,
-    taskId: string
+    taskId: string,
+    tagManager: SmartTagManager
   ): Promise<void> {
     const projectName = path.basename(config.obsidianVaultPath);
     const outputPath = path.join(config.obsidianVaultPath, projectName, subProject.name);
@@ -215,11 +258,17 @@ export class FullMontyGeneratorV2 {
       taskId
     );
     
+    // Process tags through SmartTagManager
+    const readmeTags = await tagManager.processDocumentTags(
+      [...subProject.tags, 'readme', projectName],
+      `${subProject.name}/README`
+    );
+    
     // Register and save README
     const readmeDoc = linker.registerDocument(
       `${projectName}/${subProject.name}/README`,
       `${subProject.name} Documentation`,
-      [...subProject.tags, 'readme', projectName],
+      readmeTags,
       [subProject.name]
     );
     
@@ -244,15 +293,15 @@ ${linker.generateBacklinksSection(readmeDoc)}
     
     // Generate Usage Guide
     this.display.updateTask(taskId, 50, 'Creating usage guide...');
-    await this.createUsageGuide(subProject, outputPath, linker);
+    await this.createUsageGuide(subProject, outputPath, linker, tagManager);
     
     // Generate Technical Documentation
     this.display.updateTask(taskId, 75, 'Creating technical docs...');
-    await this.createTechnicalDocs(subProject, outputPath, linker);
+    await this.createTechnicalDocs(subProject, outputPath, linker, tagManager);
     
     // Generate Examples
     this.display.updateTask(taskId, 90, 'Creating examples...');
-    await this.createExamples(subProject, outputPath, linker);
+    await this.createExamples(subProject, outputPath, linker, tagManager);
   }
   
   /**
@@ -261,7 +310,8 @@ ${linker.generateBacklinksSection(readmeDoc)}
   private async createUsageGuide(
     subProject: SubProject,
     outputPath: string,
-    linker: ObsidianLinker
+    linker: ObsidianLinker,
+    tagManager: SmartTagManager
   ): Promise<void> {
     const prompt = `
       Create a usage guide for ${subProject.name}:
@@ -278,10 +328,16 @@ ${linker.generateBacklinksSection(readmeDoc)}
       `usage-${subProject.name}`
     );
     
+    // Process tags through SmartTagManager
+    const usageTags = await tagManager.processDocumentTags(
+      [...subProject.tags, 'usage', 'guide'],
+      `${subProject.name}/usage`
+    );
+    
     const doc = linker.registerDocument(
       `${subProject.name}/usage`,
       `${subProject.name} Usage Guide`,
-      [...subProject.tags, 'usage', 'guide'],
+      usageTags,
       [`How to use ${subProject.name}`]
     );
     
@@ -311,7 +367,8 @@ ${linker.generateBacklinksSection(doc)}
   private async createTechnicalDocs(
     subProject: SubProject,
     outputPath: string,
-    linker: ObsidianLinker
+    linker: ObsidianLinker,
+    tagManager: SmartTagManager
   ): Promise<void> {
     const prompt = `
       Create technical documentation for ${subProject.name}:
@@ -328,10 +385,16 @@ ${linker.generateBacklinksSection(doc)}
       `tech-${subProject.name}`
     );
     
+    // Process tags through SmartTagManager
+    const technicalTags = await tagManager.processDocumentTags(
+      [...subProject.tags, 'technical', 'architecture'],
+      `${subProject.name}/technical`
+    );
+    
     const doc = linker.registerDocument(
       `${subProject.name}/technical`,
       `${subProject.name} Technical Details`,
-      [...subProject.tags, 'technical', 'architecture'],
+      technicalTags,
       [`${subProject.name} internals`]
     );
     
@@ -361,7 +424,8 @@ ${linker.generateBacklinksSection(doc)}
   private async createExamples(
     subProject: SubProject,
     outputPath: string,
-    linker: ObsidianLinker
+    linker: ObsidianLinker,
+    tagManager: SmartTagManager
   ): Promise<void> {
     const prompt = `
       Create example usage for ${subProject.name}:
@@ -377,10 +441,16 @@ ${linker.generateBacklinksSection(doc)}
       `examples-${subProject.name}`
     );
     
+    // Process tags through SmartTagManager
+    const exampleTags = await tagManager.processDocumentTags(
+      [...subProject.tags, 'examples', 'code'],
+      `${subProject.name}/examples`
+    );
+    
     const doc = linker.registerDocument(
       `${subProject.name}/examples`,
       `${subProject.name} Examples`,
-      [...subProject.tags, 'examples', 'code'],
+      exampleTags,
       [`${subProject.name} examples`]
     );
     
@@ -411,7 +481,8 @@ ${linker.generateBacklinksSection(doc)}
     targetPath: string,
     config: any,
     linker: ObsidianLinker,
-    lock: SimpleLockFile
+    lock: SimpleLockFile,
+    tagManager: SmartTagManager
   ): Promise<void> {
     // Similar to multi-project but treats whole repo as one project
     this.display.log('info', 'Documenting single project repository');
