@@ -4,7 +4,7 @@ import { ProjectAnalyzer } from './ProjectAnalyzer';
 import { ObsidianFormatter } from './ObsidianFormatter';
 import { CodeVerifier } from './CodeVerifier';
 import { SmartTagManager } from './SmartTagManager';
-import { queryClaudeCode } from './claudeCodeClient';
+import { streamingClaudeQuery } from './UnifiedClaudeClient';
 import { ContentCleaner } from './ContentCleaner';
 import { TUIAdapter } from './TUIAdapter';
 import { ImprovedFrontmatterGenerator } from './ImprovedFrontmatterGenerator';
@@ -31,8 +31,10 @@ export class FixedDocumentationAgent {
   private obsidianVaultPath: string;
   private documentsGenerated: number = 0;
   private totalDocuments: number = 0;
+  private projectPath: string;
 
   constructor(config: DocConfig) {
+    this.projectPath = config.targetPath;
     this.obsidianVaultPath = config.outputPath || path.join(process.env.HOME!, 'github/obsidian_vault/docs');
     
     this.config = {
@@ -143,8 +145,8 @@ export class FixedDocumentationAgent {
     this.ui.addDiagnostic('Agent', 'Starting project analysis');
     
     // Use DocumentorAgent to determine EVERYTHING
-    const agentAnalysis = await queryClaudeCode(`
-      Analyze the project at ${this.config.targetPath} and determine:
+    const agentAnalysis = await streamingClaudeQuery(
+      `Analyze the project at ${this.config.targetPath} and determine:
       
       1. Project Structure:
          - Is this a single project or multi-project repository?
@@ -187,7 +189,12 @@ export class FixedDocumentationAgent {
          }
       
       IMPORTANT: Do NOT use heuristics. Actually examine the code structure.
-    `);
+      `,
+      this.ui,
+      'project-analysis',
+      ['Read', 'Grep', 'Glob', 'LS'],
+      this.config.targetPath
+    );
     
     const analysis = JSON.parse(ContentCleaner.cleanContent(agentAnalysis));
     
@@ -219,8 +226,8 @@ export class FixedDocumentationAgent {
     const projectTags = stats.topTags || [];
     
     // Consolidate with analysis
-    const consolidatedTags = await queryClaudeCode(`
-      Consolidate tags for project documentation:
+    const consolidatedTags = await streamingClaudeQuery(
+      `Consolidate tags for project documentation:
       
       Project: ${analysis.projectType}
       Existing vault tags: ${JSON.stringify(projectTags)}
@@ -233,7 +240,10 @@ export class FixedDocumentationAgent {
       5. Add status tags: #documented, #verified
       
       Return as JSON array of tags to use.
-    `);
+      `,
+      this.ui,
+      'tag-consolidation'
+    );
     
     const tags = JSON.parse(ContentCleaner.cleanContent(consolidatedTags));
     this.ui.log('info', `[TAGS] Using ${tags.length} consolidated tags`);
@@ -277,8 +287,8 @@ export class FixedDocumentationAgent {
   }
 
   private async generateOverviewDoc(analysis: any): Promise<string> {
-    const doc = await queryClaudeCode(`
-      Generate a comprehensive overview document for this repository:
+    const doc = await streamingClaudeQuery(
+      `Generate a comprehensive overview document for this repository:
       ${JSON.stringify(analysis)}
       
       Include:
@@ -290,14 +300,17 @@ export class FixedDocumentationAgent {
       - Common usage patterns
       
       Format as clean Markdown without any AI commentary.
-    `);
+      `,
+      this.ui,
+      'overview-generation'
+    );
     
     return ContentCleaner.cleanContent(doc);
   }
 
   private async generateProjectDoc(project: any, analysis: any): Promise<string> {
-    const doc = await queryClaudeCode(`
-      Generate comprehensive documentation for:
+    const doc = await streamingClaudeQuery(
+      `Generate comprehensive documentation for:
       Project: ${project.name}
       Path: ${project.path}
       Type: ${project.type}
@@ -311,7 +324,10 @@ export class FixedDocumentationAgent {
       - Dependencies
       
       Format as clean Markdown without any AI commentary.
-    `);
+      `,
+      this.ui,
+      'project-doc-generation'
+    );
     
     return ContentCleaner.cleanContent(doc);
   }

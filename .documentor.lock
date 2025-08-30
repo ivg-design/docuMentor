@@ -1,10 +1,10 @@
 {
-  "pid": 74430,
-  "startTime": "8/30/2025, 9:14:21 AM",
-  "lastUpdate": "8/30/2025, 9:15:00 AM",
+  "pid": 76075,
+  "startTime": "8/30/2025, 9:17:16 AM",
+  "lastUpdate": "8/30/2025, 9:18:23 AM",
   "status": "failed",
   "currentPhase": "tag-initialization",
   "completedTasks": [],
   "progress": 25,
-  "error": "Crashed: write EPIPE at 8/30/2025, 9:15:00 AM"
+  "error": "Crashed: write EPIPE at 8/30/2025, 9:18:23 AM"
 }

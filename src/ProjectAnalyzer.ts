@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { queryClaudeCode } from './claudeCodeClient';
+import { queryClaudeCode } from './UnifiedClaudeClient';
 
 export interface ProjectStructure {
   rootPath: string;

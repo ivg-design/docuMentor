@@ -1,7 +1,7 @@
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { StreamingReporter } from './StreamingReporter';
-import { streamingClaudeQuery } from './EnhancedClaudeClientV2';
+import { streamingClaudeQuery } from './UnifiedClaudeClient';
 import { TUIAdapter } from './TUIAdapter';
 
 export interface SubProject {

@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { streamingClaudeQuery } from './EnhancedClaudeClientV2';
+import { streamingClaudeQuery } from './UnifiedClaudeClient';
 
 export interface AuditIssue {
   file: string;

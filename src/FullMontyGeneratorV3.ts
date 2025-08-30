@@ -8,7 +8,7 @@ import { ConfigManager } from './ConfigManager';
 import { SimpleLockFile, withLockCheck } from './SimpleLockFile';
 import { MultiProjectAnalyzer, SubProject } from './MultiProjectAnalyzer';
 import { StreamingReporter } from './StreamingReporter';
-import { streamingClaudeQuery } from './EnhancedClaudeClientV2';
+import { streamingClaudeQuery } from './UnifiedClaudeClient';
 import { SmartTagManager } from './SmartTagManager';
 import { ImprovedFrontmatterGenerator } from './ImprovedFrontmatterGenerator';
 import { DocumentationAuditor } from './DocumentationAuditor';

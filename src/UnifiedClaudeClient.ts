@@ -3,15 +3,27 @@ import * as readline from 'readline';
 import { TUIAdapter } from './TUIAdapter';
 
 /**
- * Streaming Claude query with real JSON event streaming
+ * Unified Claude Client - Single implementation for all Claude queries
+ * Consolidates EnhancedClaudeClientV2, ClaudeStreamClient, and claudeCodeClient
+ */
+
+export type ProgressCallback = (progress: number) => void;
+
+/**
+ * Main streaming Claude query function with real JSON event streaming
+ * This is the primary function that all other wrappers call
  */
 export async function streamingClaudeQuery(
   prompt: string,
-  display: TUIAdapter,
-  taskId: string,
+  display?: TUIAdapter | null,
+  taskId?: string,
   tools?: string[],
   projectPath?: string
 ): Promise<string> {
+  // Create minimal display if not provided
+  const ui = display || createMinimalDisplay();
+  const task = taskId || 'claude-query';
+  
   return new Promise((resolve, reject) => {
     let result = '';
     let filesProcessed = 0;
@@ -32,7 +44,7 @@ export async function streamingClaudeQuery(
     }
     
     // Spawn claude process with correct working directory
-    display.log('info', `Launching Claude AI from ${projectPath || process.cwd()}`);
+    ui.log('info', `Launching Claude AI from ${projectPath || process.cwd()}`);
     const claudeProcess = spawn('claude', args, {
       stdio: ['pipe', 'pipe', 'pipe'],
       env: { ...process.env },
@@ -40,17 +52,17 @@ export async function streamingClaudeQuery(
     });
     
     // Write prompt to stdin and close it
-    display.log('debug', `Sending prompt to Claude (${prompt.length} chars)`);
+    ui.log('debug', `Sending prompt to Claude (${prompt.length} chars)`);
     claudeProcess.stdin!.write(prompt);
     claudeProcess.stdin!.end();
     
     // Log process spawn
     claudeProcess.on('spawn', () => {
-      display.log('info', 'Claude process started');
+      ui.log('info', 'Claude process started');
     });
     
     claudeProcess.on('error', (err) => {
-      display.logError('Failed to start Claude', err);
+      ui.logError('Failed to start Claude', err);
       reject(err);
     });
     
@@ -63,13 +75,13 @@ export async function streamingClaudeQuery(
     // Handle each JSON event
     rl.on('line', (line) => {
       lineCount++;
-      display.log('debug', `Received line ${lineCount}: ${line.substring(0, 200)}`);
+      ui.log('debug', `Received line ${lineCount}: ${line.substring(0, 200)}`);
       
       if (!line.trim()) return;
       
       try {
         const event = JSON.parse(line);
-        display.debugEvent(event);
+        ui.debugEvent(event);
         
         // Get local timestamp
         const timestamp = new Date().toLocaleTimeString('en-US', {
@@ -83,9 +95,8 @@ export async function streamingClaudeQuery(
         switch (event.type) {
           case 'system':
             if (event.subtype === 'init') {
-              display.streamAnalysis('Claude', 'Initializing...');
-              // Don't override the phase - just log the initialization
-              display.logInfo('Claude', 'Initializing...');
+              ui.streamAnalysis('Claude', 'Initializing...');
+              ui.logInfo('Claude', 'Initializing...');
             }
             break;
             
@@ -97,11 +108,11 @@ export async function streamingClaudeQuery(
                   result += content.text;
                   const preview = content.text.substring(0, 80).replace(/\n/g, ' ');
                   if (preview.trim().length > 10) {
-                    display.streamAnalysis('Claude', preview);
+                    ui.streamAnalysis('Claude', preview);
                   }
                 } else if (content.type === 'tool_use') {
                   // Show tool usage in real-time
-                  handleToolCall(content, display, timestamp, filesProcessed++);
+                  handleToolCall(content, ui, timestamp, filesProcessed++);
                 }
               }
             }
@@ -109,14 +120,14 @@ export async function streamingClaudeQuery(
             if (event.message?.usage) {
               const tokens = event.message.usage.output_tokens || 0;
               if (tokens > 0) {
-                display.updateStatus('Analysis', `Claude is generating comprehensive analysis (${tokens} tokens processed)`);
+                ui.updateStatus('Analysis', `Claude is generating comprehensive analysis (${tokens} tokens processed)`);
               }
             }
             break;
             
           case 'tool_use':
             // Direct tool use event
-            handleToolCall(event, display, timestamp, filesProcessed++);
+            handleToolCall(event, ui, timestamp, filesProcessed++);
             break;
             
           case 'user':
@@ -124,12 +135,12 @@ export async function streamingClaudeQuery(
             if (event.message?.content) {
               for (const content of event.message.content) {
                 if (content.type === 'tool_result') {
-                  display.log('debug', `Tool result: ${JSON.stringify(content).substring(0, 200)}`);
+                  ui.log('debug', `Tool result: ${JSON.stringify(content).substring(0, 200)}`);
                   
                   const resultStr = JSON.stringify(content);
                   if (resultStr.includes('tool_use_error')) {
-                    display.logError('Tool failed', 'Claude cannot access the requested resource');
-                    display.log('debug', `Tool error: ${resultStr.substring(0, 500)}`);
+                    ui.logError('Tool failed', 'Claude cannot access the requested resource');
+                    ui.log('debug', `Tool error: ${resultStr.substring(0, 500)}`);
                   }
                 }
               }
@@ -139,36 +150,36 @@ export async function streamingClaudeQuery(
           case 'result':
             // Final result
             if (event.subtype === 'success') {
-              display.updateTask(taskId, 100, 'Complete');
+              ui.updateTask(task, 100, 'Complete');
             } else if (event.is_error) {
-              display.logError('Claude error', event.result || 'Unknown error');
+              ui.logError('Claude error', event.result || 'Unknown error');
             }
             break;
             
           case 'error':
-            display.logError(event.error?.message || 'Claude error', event);
+            ui.logError(event.error?.message || 'Claude error', event);
             break;
             
           default:
             // Log unknown event types for debugging
             if (event.type && !['ping', 'heartbeat'].includes(event.type)) {
-              display.log('debug', `Unknown event type: ${event.type}`);
+              ui.log('debug', `Unknown event type: ${event.type}`);
             }
         }
         
         // Update progress based on files processed
         if (filesProcessed > 0) {
           const estimatedProgress = Math.min(90, filesProcessed * 2);
-          display.updateTask(taskId, estimatedProgress, `Claude is analyzing project structure (${filesProcessed} files examined)`);
+          ui.updateTask(task, estimatedProgress, `Claude is analyzing project structure (${filesProcessed} files examined)`);
         }
         
       } catch (error) {
         // Not JSON, could be regular output or error
         if (line.includes('[ERROR]') || line.includes('Error:')) {
-          display.logError('Claude Error', line);
+          ui.logError('Claude Error', line);
         } else if (!isClaudeThought(line) && line.trim().length > 0) {
           // Regular output
-          display.log('info', line.substring(0, 100));
+          ui.log('info', line.substring(0, 100));
         }
       }
     });
@@ -179,23 +190,23 @@ export async function streamingClaudeQuery(
       
       // Check for sudo password prompt
       if (output.includes('Password:') || output.includes('sudo')) {
-        handleSudoPrompt(claudeProcess, display);
+        handleSudoPrompt(claudeProcess, ui);
       } else if (output.includes('error') || output.includes('Error')) {
-        display.logError('Claude error', output);
+        ui.logError('Claude error', output);
       } else {
         // Log other stderr for debugging
         if (output.trim()) {
-          display.log('debug', output.substring(0, 100));
+          ui.log('debug', output.substring(0, 100));
         }
       }
     });
     
     // Handle completion
     claudeProcess.on('close', (code) => {
-      display.log('debug', `Claude process closed with code ${code}, received ${lineCount} lines`);
+      ui.log('debug', `Claude process closed with code ${code}, received ${lineCount} lines`);
       
       if (code === 0) {
-        display.updateTask(taskId, 100, 'Complete');
+        ui.updateTask(task, 100, 'Complete');
         resolve(result);
       } else {
         reject(new Error(`Claude process exited with code ${code}`));
@@ -205,14 +216,40 @@ export async function streamingClaudeQuery(
     claudeProcess.on('error', (error) => {
       // Common error: command not found
       if (error.message.includes('ENOENT')) {
-        display.logError('Claude CLI not found. Please ensure "claude" is installed and in PATH', error);
+        ui.logError('Claude CLI not found. Please ensure "claude" is installed and in PATH', error);
         reject(new Error('Claude CLI not found. Run: npm install -g @anthropic-ai/claude-code'));
       } else {
-        display.logError('Failed to start Claude', error);
+        ui.logError('Failed to start Claude', error);
         reject(error);
       }
     });
   });
+}
+
+/**
+ * Legacy wrapper for backwards compatibility with claudeCodeClient
+ */
+export async function queryClaudeCode(
+  prompt: string,
+  progressCallback?: ProgressCallback,
+  tools?: string[],
+  projectPath?: string
+): Promise<string> {
+  // Create a minimal display interface that reports progress
+  const display = createMinimalDisplay(progressCallback);
+  
+  return streamingClaudeQuery(prompt, display, 'legacy', tools, projectPath);
+}
+
+/**
+ * Simple query without display (for non-interactive use)
+ */
+export async function simpleClaudeQuery(
+  prompt: string,
+  tools?: string[],
+  projectPath?: string
+): Promise<string> {
+  return streamingClaudeQuery(prompt, null, 'simple', tools, projectPath);
 }
 
 /**
@@ -306,28 +343,35 @@ function isClaudeThought(text: string): boolean {
 }
 
 /**
- * Legacy wrapper for backwards compatibility  
+ * Create minimal display interface for non-TUI usage
  */
-export async function queryClaudeCode(
-  prompt: string,
-  progressCallback?: (progress: number) => void,
-  tools?: string[],
-  projectPath?: string
-): Promise<string> {
-  // Create a minimal display interface
+function createMinimalDisplay(progressCallback?: ProgressCallback): TUIAdapter {
   const display = {
     streamFile: () => {},
     streamAnalysis: () => {},
     stream: () => {},
-    log: console.log,
-    logError: console.error,
+    log: (level: string, msg: string) => {
+      if (level === 'error') console.error(msg);
+      else if (level === 'warning') console.warn(msg);
+      else if (process.env.DEBUG) console.log(msg);
+    },
+    logInfo: (title: string, msg?: string) => {
+      if (process.env.DEBUG) console.log(`[${title}] ${msg || ''}`);
+    },
+    logError: (title: string, error: any) => {
+      console.error(`[${title}]`, error);
+    },
     updateTask: (id: string, progress: number) => {
       if (progressCallback) progressCallback(progress);
     },
     updatePhase: () => {},
     updateStatus: () => {},
-    debugEvent: () => {}
+    debugEvent: () => {},
+    pause: () => {},
+    resume: () => {},
+    setWorking: () => {},
+    addDiagnostic: () => {}
   } as any;
   
-  return streamingClaudeQuery(prompt, display, 'legacy', tools, projectPath);
+  return display;
 }
