@@ -1,123 +1,97 @@
-# DocuMentor 📚
+# DocuMentor
 
-> An intelligent, AI-powered documentation generator that transforms codebases into comprehensive, Obsidian-compatible documentation with automated analysis, verification, and monitoring capabilities.
+> 🤖 AI-powered documentation generator with Obsidian integration, real-time progress tracking, and comprehensive code analysis
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node Version](https://img.shields.io/badge/node-%3E%3D16.0.0-brightgreen)](https://nodejs.org)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0%2B-blue)](https://www.typescriptlang.org/)
-[![Version](https://img.shields.io/badge/version-2.0.0-purple)](https://github.com/yourusername/docuMentor/releases)
+[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/docuMentor)
+[![Node](https://img.shields.io/badge/node-%3E%3D16.0.0-green.svg)](https://nodejs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0%2B-blue.svg)](https://www.typescriptlang.org/)
+[![Go](https://img.shields.io/badge/Go-1.20%2B-00ADD8.svg)](https://golang.org/)
+[![License](https://img.shields.io/badge/license-MIT-purple.svg)](LICENSE)
 
-## 🎯 Project Overview
+## 📖 Project Overview
 
-DocuMentor is an enterprise-grade documentation automation tool that leverages Claude AI to analyze, verify, and document codebases. It transforms complex code into intelligent, interconnected documentation that integrates seamlessly with Obsidian knowledge management systems.
+DocuMentor is an intelligent documentation generation system that leverages Claude AI to analyze codebases and produce comprehensive, well-structured documentation. It seamlessly integrates with Obsidian for knowledge management, provides real-time progress tracking through a Go-based TUI, and ensures documentation quality through code verification and safety validation.
 
-### Purpose
-
-DocuMentor addresses the critical challenge of maintaining up-to-date, comprehensive documentation for software projects. By automating the documentation process with AI-powered analysis, it ensures that documentation remains synchronized with code changes while maintaining high quality and consistency.
-
-### Core Value Propositions
-
-- **🤖 AI-Powered Intelligence**: Leverages Claude AI for deep semantic understanding of code structure, patterns, and intent
-- **✅ Verification-First Approach**: Validates code functionality before documenting, ensuring accuracy and reliability
-- **🔗 Knowledge Graph Integration**: Creates interconnected documentation with intelligent tagging and bidirectional cross-references
-- **📊 Enterprise Scale**: Handles everything from microservices to large monorepos with thousands of files
-- **🔄 Continuous Documentation**: Real-time monitoring and automatic updates for GitHub repositories
-- **🛡️ Safety & Reliability**: Built-in validation, automatic backups, and rollback capabilities prevent data loss
+### Core Purpose
+- **Automated Documentation**: Transform any codebase into comprehensive documentation
+- **Knowledge Management**: Direct integration with Obsidian vaults for organized documentation
+- **Quality Assurance**: Verify code functionality and maintain documentation accuracy
+- **Developer Experience**: Real-time progress tracking with an intuitive terminal interface
 
 ## ✨ Key Features
 
-### Core Documentation Engine
+### 🎯 Documentation Generation
+- **AI-Powered Analysis**: Uses Claude AI for intelligent code understanding
+- **Multi-Format Support**: Generate documentation in Markdown with Obsidian-specific formatting
+- **Project Type Detection**: Automatically identifies project frameworks and languages
+- **Comprehensive Coverage**: Creates API docs, architecture diagrams, and usage guides
 
-| Feature | Description |
-|---------|-------------|
-| **AI-Powered Analysis** | Claude AI integration for semantic code understanding and natural language generation |
-| **Smart Project Detection** | Automatic identification of project types, frameworks, and architectures |
-| **Code Verification** | Pre-documentation validation of code functionality and dependencies |
-| **Intelligent Tagging** | Hierarchical tag system with automatic suggestion and cross-referencing |
-| **Obsidian Integration** | Native support for backlinks, tags, and graph view |
-| **Multi-Language Support** | JavaScript, TypeScript, Python, Go, Rust, Java, and more |
+### 🔗 Obsidian Integration
+- **Native Compatibility**: Full support for Obsidian backlinks, tags, and frontmatter
+- **Smart Tagging**: Intelligent tag hierarchy and consolidation
+- **Cross-References**: Automatic generation of document relationships
+- **Vault Management**: Direct output to configured Obsidian vaults
 
-### Advanced Capabilities (v2.0)
+### 📊 Progress & Monitoring
+- **Go TUI Dashboard**: Real-time visual progress tracking
+- **Interrupt Handling**: Safe interruption with state preservation
+- **Lock File System**: Resume interrupted documentation sessions
+- **Streaming Processing**: Efficient handling of large codebases
 
-| Feature | Description |
-|---------|-------------|
-| **Full Monty Mode** | Comprehensive analysis including security, performance, and quality metrics |
-| **Streaming Processing** | Real-time Claude AI responses with live progress updates |
-| **Multi-Project Analysis** | Intelligent handling of monorepos and multi-tool projects |
-| **Documentation Auditing** | Quality scoring and gap analysis for existing documentation |
-| **Smart Lock Management** | Concurrent operation prevention with resume capability |
-| **Professional Terminal UI** | Dashboard with task tracking, progress bars, and interrupt handling |
-| **Frontmatter Generation** | Rich metadata including timestamps, authors, and relationships |
+### 🔒 Safety & Validation
+- **Code Verification**: Validates documented functionality
+- **Safety Checks**: File integrity and permission validation
+- **Backup System**: Automatic backups before modifications
+- **Sensitive Data Protection**: Scans for and protects sensitive information
+
+### 🌐 GitHub Integration
+- **Repository Monitoring**: Track changes and auto-document commits
+- **Pull Request Analysis**: Document PR changes and impacts
+- **Issue Tracking**: Link documentation to GitHub issues
+- **Continuous Documentation**: Keep docs in sync with code changes
 
 ## 🚀 Installation
 
-### System Requirements
+### Prerequisites
+```bash
+# Required
+- Node.js >= 16.0.0
+- npm or yarn
+- Go >= 1.20 (for TUI)
 
-| Requirement | Version | Notes |
-|-------------|---------|-------|
-| Node.js | ≥ 16.0.0 | LTS version recommended |
-| npm/yarn | Latest | npm 8+ or yarn 1.22+ |
-| Claude Code SDK | Active subscription | Required for AI features |
-| Git | ≥ 2.0 | For version control features |
-| Obsidian | Latest | Optional, for viewing documentation |
+# Optional
+- Obsidian (for viewing generated documentation)
+- GitHub account (for repository monitoring)
+```
 
-### Quick Installation
-
+### Quick Install
 ```bash
 # Clone the repository
 git clone https://github.com/yourusername/docuMentor.git
 cd docuMentor
 
-# Install dependencies
+# Install Node.js dependencies
 npm install
 
-# Build the project
+# Build TypeScript
 npm run build
 
-# Link globally for CLI access
+# Build Go TUI (optional but recommended)
+cd src/tui
+go mod download
+go build -o documentor-tui main.go updateInfoBox.go password_modal_simple.go
+cd ../..
+
+# Make launcher executable
+chmod +x documentor
+
+# Link globally (optional)
 npm link
-
-# Verify installation
-documentor --version
 ```
 
-### Development Environment Setup
-
-```bash
-# Install all dependencies including dev
-npm install --save-dev
-
-# Run in development mode with hot reload
-npm run dev
-
-# Build production bundle
-npm run build:prod
-
-# Run linting and type checking
-npm run lint
-npm run typecheck
-
-# Clean build artifacts
-npm run clean
-```
-
-### Docker Installation (Alternative)
-
-```dockerfile
-# Dockerfile example
-FROM node:16-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY . .
-RUN npm run build
-CMD ["node", "dist/index.js"]
-```
-
-## 📖 Usage Examples
+## 📚 Usage Examples
 
 ### Basic Documentation Generation
-
 ```bash
 # Document current directory
 documentor generate
@@ -125,72 +99,33 @@ documentor generate
 # Document specific project
 documentor generate /path/to/project
 
-# With custom output location
-documentor generate /path/to/project --output /custom/docs
-
-# Skip code verification for speed
-documentor generate /path/to/project --no-verify
-
-# Update existing documentation without overwriting manual edits
-documentor generate /path/to/project --update
-
-# Exclude specific paths
-documentor generate /path/to/project --exclude "**/test/**" "**/vendor/**"
+# Specify output location
+documentor generate /path/to/project -o ~/obsidian/vault/docs
 ```
 
-### Full Monty - Comprehensive Documentation
-
+### Advanced Features
 ```bash
-# Generate complete documentation suite
+# Comprehensive documentation with metrics
 documentor full-monty /path/to/project
 
-# With verbose output
-documentor full-monty /path/to/project --verbose
-```
+# Verify code without generating docs
+documentor verify /path/to/project
 
-### Configuration Management
+# Monitor GitHub repository
+documentor monitor --add owner/repo --start
 
-```bash
-# View current configuration
+# Configure settings
 documentor config --show
-
-# Edit configuration
-documentor config --edit
-
-# Validate configuration
-documentor config --validate
-
-# Set default target path
-documentor config --set-path /default/project
-
-# Set Obsidian vault location
-documentor config --set-vault /path/to/vault
-
-# Reset to defaults
-documentor config --reset
+documentor config --set-vault ~/obsidian/vault
 ```
 
-### GitHub Monitoring
-
+### Self-Documentation
 ```bash
-# Add repository to monitor
-documentor monitor --add owner/repo
-
-# Start monitoring with 5-minute intervals
-documentor monitor --start --interval 5
-
-# List monitored repositories
-documentor monitor --list
-
-# Stop monitoring
-documentor monitor --stop
-
-# Remove repository
-documentor monitor --remove owner/repo
+# Generate documentation for DocuMentor itself
+documentor self-document
 ```
 
 ### Safety Operations
-
 ```bash
 # Check directory safety
 documentor safety --check /path/to/project
@@ -200,27 +135,8 @@ documentor safety --backup /path/to/project
 
 # View safety report
 documentor safety --report
-
-# Clean old backups
-documentor safety --cleanup
 ```
 
-### Additional Commands
-
-```bash
-# Verify code without documentation
-documentor verify /path/to/project
-
-# Analyze project structure
-documentor analyze /path/to/project
-
-# Manage Obsidian tags
-documentor tags --scan
-documentor tags --generate-index
-
-# Self-document DocuMentor
-documentor self-document
-```
 
 ## 🏗️ Architecture Overview
 
@@ -481,153 +397,61 @@ Comprehensive documentation generation including:
 
 ## 🤝 Contributing Guidelines
 
-### Development Process
+### Development Setup
+```bash
+# Fork and clone
+git clone https://github.com/yourusername/docuMentor.git
+cd docuMentor
 
-1. **Fork & Clone**
-   ```bash
-   git clone https://github.com/yourusername/docuMentor.git
-   cd docuMentor
-   npm install
-   ```
+# Install dependencies
+npm install
 
-2. **Create Feature Branch**
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
+# Development mode
+npm run dev
 
-3. **Development**
-   - Write clean, documented code
-   - Add unit tests for new features
-   - Update documentation as needed
-   - Follow TypeScript best practices
+# Run tests
+npm test
+```
 
-4. **Testing**
-   ```bash
-   npm run test        # Run tests
-   npm run lint        # Check linting
-   npm run typecheck   # Type checking
-   ```
+### Code Style
+- **TypeScript**: Follow strict type checking
+- **Go**: Use standard Go formatting (gofmt)
+- **Commits**: Use conventional commit messages
+- **Documentation**: Update docs for new features
 
-5. **Commit**
-   ```bash
-   git commit -m "feat: add new feature"
-   # Use conventional commits:
-   # feat: new feature
-   # fix: bug fix
-   # docs: documentation
-   # style: formatting
-   # refactor: code restructuring
-   # test: adding tests
-   # chore: maintenance
-   ```
+### Contribution Process
+1. **Fork** the repository
+2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
+3. **Commit** changes (`git commit -m 'feat: Add amazing feature'`)
+4. **Push** to branch (`git push origin feature/amazing-feature`)
+5. **Open** a Pull Request
 
-6. **Push & PR**
-   ```bash
-   git push origin feature/your-feature-name
-   # Open PR on GitHub
-   ```
-
-### Code Standards
-
-- **TypeScript**: Strict mode enabled, no `any` types
-- **Formatting**: Prettier with 2-space indentation
-- **Linting**: ESLint with recommended rules
-- **Naming**: CamelCase for variables, PascalCase for classes
-- **Documentation**: JSDoc comments for public APIs
-- **Testing**: Minimum 80% code coverage
+### Areas for Contribution
+- 🐛 Bug fixes and issue resolution
+- ✨ New documentation formats
+- 🎨 TUI improvements and themes
+- 📝 Documentation enhancements
+- 🧪 Test coverage expansion
+- 🔧 Performance optimizations
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-```
-MIT License
-
-Copyright (c) 2024 DocuMentor Contributors
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction...
-```
-
 ## 🙏 Acknowledgments
 
-### Technologies
+- [Claude AI](https://anthropic.com) for powering intelligent analysis
+- [Obsidian](https://obsidian.md) for inspiration on knowledge management
+- [tview](https://github.com/rivo/tview) for the Go TUI framework
+- Community contributors and users
 
-- **[Claude AI](https://claude.ai)**: Advanced AI language model for code analysis
-- **[Commander.js](https://github.com/tj/commander.js/)**: Elegant CLI interface framework
-- **[Chalk](https://github.com/chalk/chalk)**: Terminal string styling
-- **[Obsidian](https://obsidian.md/)**: Knowledge management inspiration
-- **[TypeScript](https://www.typescriptlang.org/)**: Type-safe JavaScript
 
-### Contributors
+## 📞 Support
 
-Special thanks to all contributors who have helped shape DocuMentor.
-
-### Community
-
-- GitHub Discussions for feature requests
-- Stack Overflow community for troubleshooting
-- Open source community for continuous inspiration
-
-## 🔮 Roadmap
-
-### Version 2.1 (Q1 2024)
-- [ ] **Real-time Collaboration**: Multi-user documentation sessions
-- [ ] **Template System**: Customizable documentation templates
-- [ ] **Plugin Architecture**: Extensible plugin system for custom processors
-- [ ] **Web Dashboard**: Browser-based monitoring and configuration
-- [ ] **API Endpoints**: RESTful API for programmatic access
-
-### Version 3.0 (Q2 2024)
-- [ ] **Multi-language Output**: Generate docs in multiple languages
-- [ ] **Visual Graphs**: Interactive dependency and architecture diagrams
-- [ ] **CI/CD Integration**: GitHub Actions, GitLab CI, Jenkins plugins
-- [ ] **Version Control**: Documentation versioning and diffing
-- [ ] **Team Features**: Role-based access and collaboration tools
-
-### Future Vision
-- [ ] **ML Enhancement**: Machine learning for documentation quality improvement
-- [ ] **NLP Queries**: Natural language search across documentation
-- [ ] **Auto-sync**: Real-time documentation updates via webhooks
-- [ ] **Enterprise Suite**: SSO, audit logs, compliance features
-- [ ] **Cloud Platform**: SaaS offering with managed infrastructure
-
-## 📞 Support & Resources
-
-### Getting Help
-
-| Channel | Purpose | Response Time |
-|---------|---------|-------|
-| [GitHub Issues](https://github.com/yourusername/docuMentor/issues) | Bug reports and feature requests | 24-48 hours |
-| [GitHub Discussions](https://github.com/yourusername/docuMentor/discussions) | General questions and community support | Community-driven |
-| [Documentation Wiki](https://github.com/yourusername/docuMentor/wiki) | Detailed guides and tutorials | Always available |
-| [Stack Overflow](https://stackoverflow.com/questions/tagged/documentor) | Technical questions | Community-driven |
-
-### Additional Resources
-
-- 📚 [User Guide](USAGE_GUIDE.md) - Comprehensive usage documentation
-- 🎓 [Video Tutorials](https://youtube.com/documentor) - Step-by-step video guides
-- 💬 [Discord Community](https://discord.gg/documentor) - Real-time chat support
-- 📰 [Blog](https://blog.documentor.dev) - Updates and best practices
-- 🐦 [Twitter](https://twitter.com/documentor) - Latest news and tips
-
-### Commercial Support
-
-For enterprise support and custom development:
-- Email: enterprise@documentor.dev
-- Phone: +1 (555) 123-4567
-- SLA-backed support available
+- **Issues**: [GitHub Issues](https://github.com/yourusername/docuMentor/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/yourusername/docuMentor/discussions)
+- **Documentation**: [Full Documentation](docs/)
 
 ---
 
-<div align="center">
-
-**DocuMentor v2.0.0** - *Intelligent Documentation, Automated*
-
-Built with ❤️ using Claude AI and TypeScript
-
-[![Star on GitHub](https://img.shields.io/github/stars/yourusername/docuMentor.svg?style=social)](https://github.com/yourusername/docuMentor)
-[![Follow on Twitter](https://img.shields.io/twitter/follow/documentor.svg?style=social)](https://twitter.com/documentor)
-
-</div>
+*Built with ❤️ by the DocuMentor team*

@@ -1,9 +1,10 @@
 {
   "pid": 58222,
   "startTime": "8/30/2025, 8:34:56 AM",
-  "lastUpdate": "8/30/2025, 8:37:06 AM",
-  "status": "running",
+  "lastUpdate": "8/30/2025, 8:45:05 AM",
+  "status": "failed",
   "currentPhase": "tag-initialization",
   "completedTasks": [],
-  "progress": 25
+  "progress": 25,
+  "error": "Frontmatter validation failed - all fields must be present!"
 }

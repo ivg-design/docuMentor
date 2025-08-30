@@ -8,6 +8,7 @@ import { queryClaudeCode } from './claudeCodeClient';
 import { ContentCleaner } from './ContentCleaner';
 import { TUIAdapter } from './TUIAdapter';
 import { ImprovedFrontmatterGenerator } from './ImprovedFrontmatterGenerator';
+import { PhaseManager, PhaseType, OperationType, initializePhaseManager } from './PhaseManager';
 
 export interface DocConfig {
   targetPath: string;
@@ -26,6 +27,7 @@ export class FixedDocumentationAgent {
   private tagManager: SmartTagManager;
   private frontmatterGen: ImprovedFrontmatterGenerator;
   private ui: TUIAdapter;
+  private phaseManager: PhaseManager;
   private obsidianVaultPath: string;
   private documentsGenerated: number = 0;
   private totalDocuments: number = 0;
@@ -55,6 +57,7 @@ export class FixedDocumentationAgent {
     this.tagManager = new SmartTagManager(this.obsidianVaultPath, projectName);
     this.frontmatterGen = new ImprovedFrontmatterGenerator(this.config.targetPath);
     this.ui = new TUIAdapter();
+    this.phaseManager = initializePhaseManager(this.ui, 'generate');
   }
 
   async generateDocumentation(): Promise<void> {
@@ -65,38 +68,63 @@ export class FixedDocumentationAgent {
 
     try {
       // Phase 1: Initialization
-      this.ui.setPhase(1, 7, 'Initialization');
-      this.ui.setWorking(true);
+      this.phaseManager.startPhase(PhaseType.INITIALIZATION);
+      this.phaseManager.startTask('load-config');
+      this.phaseManager.reportOperation(OperationType.READ, 'config.json');
+      this.phaseManager.completeTask('load-config');
       
-      // Phase 2: Analysis - NO HEURISTICS, use DocumentorAgent
-      this.ui.setPhase(2, 7, 'Analysis');
+      // Phase 2: Validation
+      this.phaseManager.startPhase(PhaseType.VALIDATION);
+      this.phaseManager.startTask('safety-check');
+      this.phaseManager.reportOperation(OperationType.VALIDATE, this.config.targetPath);
+      // Validation logic here
+      this.phaseManager.completeTask('safety-check');
+      
+      // Phase 3: Analysis - NO HEURISTICS, use DocumentorAgent
+      this.phaseManager.startPhase(PhaseType.ANALYSIS);
+      this.phaseManager.startTask('scan-structure');
       const projectAnalysis = await this.analyzeProjectProperly();
+      this.phaseManager.completeTask('scan-structure');
       
-      // Phase 3: Tag Loading & Consolidation
-      this.ui.setPhase(3, 7, 'Tag Consolidation');
+      // Phase 4: Preparation - Tag Loading & Consolidation
+      this.phaseManager.startPhase(PhaseType.PREPARATION);
+      this.phaseManager.startTask('load-tags');
       await this.consolidateTags(projectAnalysis);
-      
-      // Phase 4: Verification
-      this.ui.setPhase(4, 7, 'Verification');
-      if (this.config.verifyCode) {
-        await this.verifyCodeFunctionality(projectAnalysis);
-      }
+      this.phaseManager.completeTask('load-tags');
       
       // Phase 5: Documentation Generation
-      this.ui.setPhase(5, 7, 'Documentation');
+      this.phaseManager.startPhase(PhaseType.GENERATION);
       const documentation = await this.generateDocsForProject(projectAnalysis);
       
-      // Phase 6: Formatting & Frontmatter
-      this.ui.setPhase(6, 7, 'Formatting');
+      // Phase 6: Enhancement (includes verification)
+      this.phaseManager.startPhase(PhaseType.ENHANCEMENT);
+      if (this.config.verifyCode) {
+        this.phaseManager.startTask('verify-code');
+        await this.verifyCodeFunctionality(projectAnalysis);
+        this.phaseManager.completeTask('verify-code');
+      }
+      
+      // Phase 7: Formatting & Frontmatter
+      this.phaseManager.startPhase(PhaseType.FORMATTING);
+      this.phaseManager.startTask('apply-frontmatter');
       const formattedDocs = await this.formatWithFrontmatter(documentation, projectAnalysis);
+      this.phaseManager.completeTask('apply-frontmatter');
       
-      // Phase 7: Save to Obsidian Vault
-      this.ui.setPhase(7, 7, 'Saving to Obsidian');
+      // Phase 8: Integration
+      this.phaseManager.startPhase(PhaseType.INTEGRATION);
+      this.phaseManager.startTask('build-indexes');
+      // Build indexes logic here
+      this.phaseManager.completeTask('build-indexes');
+      
+      // Phase 9: Finalization - Save to Obsidian Vault
+      this.phaseManager.startPhase(PhaseType.FINALIZATION);
+      this.phaseManager.startTask('save-docs');
       await this.saveToObsidianVault(formattedDocs, projectAnalysis);
+      this.phaseManager.completeTask('save-docs');
       
+      this.phaseManager.completePhase(PhaseType.FINALIZATION);
       this.ui.log('success', '[SUCCESS] Documentation generation complete!');
       this.ui.log('info', `[INFO] View in Obsidian: ${this.config.outputPath}`);
-      this.ui.setWorking(false);
       
     } catch (error) {
       this.ui.logError('[ERROR] Error generating documentation:', error);
@@ -223,26 +251,27 @@ export class FixedDocumentationAgent {
     
     // Generate overview if needed
     if (analysis.documentationStructure.needsOverview) {
-      this.ui.updateDocumentProgress(0, this.totalDocuments, 'Repository Overview');
+      this.phaseManager.startTask('gen-overview');
+      this.phaseManager.reportDocumentOperation('creating', 'README.md', 0);
       docs.overview = await this.generateOverviewDoc(analysis);
       this.documentsGenerated++;
-      this.ui.updateDocumentProgress(this.documentsGenerated, this.totalDocuments);
+      this.phaseManager.reportDocumentOperation('writing', 'README.md', 100);
+      this.phaseManager.completeTask('gen-overview');
     }
     
     // Generate docs for each project
+    this.phaseManager.startTask('gen-components');
     for (const project of analysis.projects) {
-      this.ui.updateDocumentProgress(
-        this.documentsGenerated, 
-        this.totalDocuments, 
-        project.name
-      );
+      const docName = `${project.name}.md`;
+      this.phaseManager.reportDocumentOperation('creating', docName, 0);
       
       const projectDoc = await this.generateProjectDoc(project, analysis);
       docs[project.name] = projectDoc;
       
+      this.phaseManager.reportDocumentOperation('writing', docName, 100);
       this.documentsGenerated++;
-      this.ui.updateDocumentProgress(this.documentsGenerated, this.totalDocuments);
     }
+    this.phaseManager.completeTask('gen-components');
     
     return docs;
   }

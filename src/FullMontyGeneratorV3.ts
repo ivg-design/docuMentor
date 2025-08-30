@@ -1,6 +1,7 @@
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { TUIAdapter } from './TUIAdapter';
+import { PhaseManager, PhaseType, OperationType, initializePhaseManager } from './PhaseManager';
 import { ObsidianLinker } from './ObsidianLinker';
 import { SafetyValidator } from './SafetyValidator';
 import { ConfigManager } from './ConfigManager';
@@ -30,6 +31,7 @@ export interface FullMontyReport {
 export class FullMontyGeneratorV3 {
   private config: ConfigManager;
   private ui: TUIAdapter;
+  private phaseManager: PhaseManager;
   private safety: SafetyValidator;
   private streamer: StreamingReporter;
   private report: FullMontyReport;
@@ -38,6 +40,7 @@ export class FullMontyGeneratorV3 {
   constructor(verbose: boolean = false) {
     this.config = new ConfigManager();
     this.ui = new TUIAdapter();
+    this.phaseManager = initializePhaseManager(this.ui, 'full-monty');
     this.safety = new SafetyValidator();
     this.streamer = new StreamingReporter(null as any);
     this.report = null!;
@@ -332,11 +335,12 @@ export class FullMontyGeneratorV3 {
     const outputPath = path.join(config.obsidianVaultPath, projectName);
     await fs.mkdir(outputPath, { recursive: true });
     
-    // Create main documentation task
-    this.ui.createTask('main-docs', 'Main Documentation', 100);
+    // Start Generation Phase
+    this.phaseManager.startPhase(PhaseType.GENERATION);
+    this.phaseManager.startTask('gen-readme');
     
     // 1. Generate README
-    this.ui.updateTask('main-docs', 10, 'Generating README...', 'README.md');
+    this.phaseManager.reportDocumentOperation('creating', 'README.md', 0);
     this.ui.streamAnalysis('Claude', 'Analyzing project for README generation...');
     
     const readmePrompt = `
@@ -351,6 +355,7 @@ Analyze the project at ${targetPath} and create comprehensive README documentati
 Format as professional markdown documentation.
 `;
     
+    this.phaseManager.reportOperation(OperationType.QUERY, 'Claude API', 50, 'Generating README content');
     const readme = await streamingClaudeQuery(
       readmePrompt,
       this.ui,
@@ -358,6 +363,7 @@ Format as professional markdown documentation.
       undefined,  // no specific tools
       targetPath  // Pass the project path dynamically
     );
+    this.phaseManager.reportDocumentOperation('writing', 'README.md', 100);
     
     const readmeTags = await tagManager.processDocumentTags(
       ['readme', 'documentation', projectName],
@@ -412,6 +418,7 @@ Create a comprehensive usage guide for ${projectName}:
 - Troubleshooting
 `;
     
+    this.phaseManager.reportOperation(OperationType.QUERY, 'Claude API', 50, 'Generating usage guide');
     const usage = await streamingClaudeQuery(
       usagePrompt,
       this.ui,
@@ -419,6 +426,7 @@ Create a comprehensive usage guide for ${projectName}:
       undefined,  // no specific tools
       targetPath  // Pass the project path dynamically
     );
+    this.phaseManager.reportDocumentOperation('writing', 'USAGE.md', 100);
     
     const usageTags = await tagManager.processDocumentTags(
       ['usage', 'guide', 'howto', projectName],
