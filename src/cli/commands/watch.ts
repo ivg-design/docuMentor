@@ -2,7 +2,8 @@ import { Command } from 'commander'
 import { watch, promises as fs } from 'fs'
 import { resolve, join, relative, extname } from 'path'
 import { existsSync, statSync } from 'fs'
-import { logger } from '../display'
+// import { logger } from '../display' // Replaced with unified Logger
+import { Logger } from '../../core/Logger'
 import { ConfigManager } from './config'
 import { DocumentorConfig } from '../../types'
 import { DocumentEngine } from './generate'
@@ -47,28 +48,26 @@ class FileWatcher {
       debounceMs: options.debounceMs || this.config.watch?.debounceMs || 2000
     }
 
-    logger.showHeader(
-      'File Watcher Started',
-      `Monitoring: ${this.projectPath}`
-    )
+    Logger.info('File Watcher Started')
+    Logger.info(`Monitoring: ${this.projectPath}`)
 
-    logger.info('Watch patterns:')
+    Logger.info('Watch patterns:')
     watchConfig.include.forEach(pattern => {
-      logger.info(`  + ${pattern}`)
+      Logger.info(`  + ${pattern}`)
     })
     watchConfig.exclude.forEach(pattern => {
-      logger.info(`  - ${pattern}`)
+      Logger.info(`  - ${pattern}`)
     })
 
     // Start watching the project directory
     await this.setupDirectoryWatcher(this.projectPath, watchConfig)
 
-    logger.success('File watcher active - changes will trigger documentation regeneration')
-    logger.info('Press Ctrl+C to stop watching')
+    Logger.success('File watcher active - changes will trigger documentation regeneration')
+    Logger.info('Press Ctrl+C to stop watching')
 
     // Handle graceful shutdown
     process.on('SIGINT', () => {
-      logger.info('Stopping file watcher...')
+      Logger.info('Stopping file watcher...')
       this.shutdown()
     })
 
@@ -96,20 +95,20 @@ class FileWatcher {
           return
         }
 
-        logger.debug(`File change detected: ${eventType} ${relativePath}`)
+        Logger.debug(`File change detected: ${eventType} ${relativePath}`)
         await this.handleFileChange(fullPath, eventType)
       })
 
       this.watchers.set(watcherKey, watcher)
 
       watcher.on('error', (error) => {
-        logger.error(`Watcher error for ${dirPath}:`, error)
+        Logger.error(`Watcher error for ${dirPath}: ${(error as Error).message}`)
       })
 
-      logger.debug(`Started watching: ${dirPath}`)
+      Logger.debug(`Started watching: ${dirPath}`)
 
     } catch (error) {
-      logger.error(`Failed to start watching ${dirPath}:`, error)
+      Logger.error(`Failed to start watching ${dirPath}: ${(error as Error).message}`)
     }
   }
 
@@ -187,22 +186,22 @@ class FileWatcher {
     this.isGenerating = true
 
     try {
-      logger.info(`Processing ${changes.length} file changes:`)
+      Logger.info(`Processing ${changes.length} file changes:`)
       changes.forEach(change => {
-        logger.info(`  ${change}`)
+        Logger.info(`  ${change}`)
       })
 
       await this.regenerateDocumentation(changes)
 
     } catch (error) {
-      logger.error('Error processing file changes:', error)
+      Logger.error(`Error processing file changes: ${(error as Error).message}`)
     } finally {
       this.isGenerating = false
     }
   }
 
   private async regenerateDocumentation(changes: string[]): Promise<void> {
-    logger.info('Regenerating documentation...')
+    Logger.info('Regenerating documentation...')
 
     try {
       // Create incremental generation context
@@ -218,18 +217,18 @@ class FileWatcher {
       // For now, we'll do a full regeneration
       const engine = new DocumentEngine(incrementalConfig, this.projectPath)
 
-      logger.info('Starting incremental documentation update...')
+      Logger.info('Starting incremental documentation update...')
       await engine.execute({
         format: incrementalConfig.output.format,
         noPermission: true, // Auto-approve for watch mode
         verbose: false
       })
 
-      logger.success('Documentation updated successfully')
-      logger.info('Continuing to watch for changes...')
+      Logger.success('Documentation updated successfully')
+      Logger.info('Continuing to watch for changes...')
 
     } catch (error) {
-      logger.error('Failed to regenerate documentation:', error)
+      Logger.error(`Failed to regenerate documentation: ${(error as Error).message}`)
     }
   }
 
@@ -243,14 +242,14 @@ class FileWatcher {
     for (const [path, watcher] of this.watchers.entries()) {
       try {
         watcher.close()
-        logger.debug(`Stopped watching: ${path}`)
+        Logger.debug(`Stopped watching: ${path}`)
       } catch (error) {
-        logger.error(`Error closing watcher for ${path}:`, error)
+        Logger.error(`Error closing watcher for ${path}: ${(error as Error).message}`)
       }
     }
 
     this.watchers.clear()
-    logger.success('File watcher stopped')
+    Logger.success('File watcher stopped')
     process.exit(0)
   }
 }
@@ -267,12 +266,12 @@ const watchCommand = new Command('watch')
       // Validate project path
       const resolvedProjectPath = resolve(projectPath)
       if (!existsSync(resolvedProjectPath)) {
-        logger.error(`Project directory does not exist: ${resolvedProjectPath}`)
+        Logger.error(`Project directory does not exist: ${resolvedProjectPath}`)
         process.exit(1)
       }
 
       if (!statSync(resolvedProjectPath).isDirectory()) {
-        logger.error(`Path is not a directory: ${resolvedProjectPath}`)
+        Logger.error(`Path is not a directory: ${resolvedProjectPath}`)
         process.exit(1)
       }
 
@@ -283,7 +282,7 @@ const watchCommand = new Command('watch')
       // Parse debounce option
       const debounceMs = parseInt(options.debounce)
       if (isNaN(debounceMs) || debounceMs < 100) {
-        logger.error('Debounce delay must be at least 100ms')
+        Logger.error('Debounce delay must be at least 100ms')
         process.exit(1)
       }
 
@@ -297,7 +296,7 @@ const watchCommand = new Command('watch')
       })
 
     } catch (error) {
-      logger.error('Watch command failed:', error)
+      Logger.error(`Watch command failed: ${(error as Error).message}`)
       process.exit(1)
     }
   })
@@ -310,7 +309,8 @@ const analyzeCommand = new Command('analyze')
   .option('--json', 'Output in JSON format')
   .action(async (projectPath: string, options) => {
     try {
-      logger.showHeader('Project Analysis', `Analyzing: ${projectPath}`)
+      Logger.info('Project Analysis')
+      Logger.info(`Analyzing: ${projectPath}`)
 
       // Load project type detector
       const { ProjectTypeDetector } = await import('../../core/ProjectTypeDetector')
@@ -318,16 +318,17 @@ const analyzeCommand = new Command('analyze')
       const result = await detector.detect(resolve(projectPath))
 
       if (options.json) {
-        console.log(JSON.stringify(result, null, 2))
+        // Output JSON to stderr to avoid mixing with TUI protocol
+        process.stderr.write(JSON.stringify(result, null, 2) + '\n')
       } else {
-        logger.success(`Project Type: ${result.type}`)
-        logger.info(`Confidence: ${result.confidence}%`)
-        logger.info('Reasoning:')
-        result.reasoning.forEach((reason: any) => logger.info(`  - ${reason}`))
+        Logger.success(`Project Type: ${result.type}`)
+        Logger.info(`Confidence: ${result.confidence}%`)
+        Logger.info('Reasoning:')
+        result.reasoning.forEach((reason: any) => Logger.info(`  - ${reason}`))
       }
 
     } catch (error) {
-      logger.error('Analysis failed:', error)
+      Logger.error(`Analysis failed: ${(error as Error).message}`)
       process.exit(1)
     }
   })
@@ -338,23 +339,24 @@ const verifyCommand = new Command('verify')
   .option('--fix', 'Attempt to auto-fix issues')
   .action(async (docsPath: string, options) => {
     try {
-      logger.showHeader('Documentation Verification', `Verifying: ${docsPath}`)
+      Logger.info('Documentation Verification')
+      Logger.info(`Verifying: ${docsPath}`)
 
       if (!existsSync(resolve(docsPath))) {
-        logger.error('Documentation directory does not exist')
+        Logger.error('Documentation directory does not exist')
         process.exit(1)
       }
 
       // Simple verification - check for basic structure
-      logger.info('Checking documentation structure...')
-      logger.success('Documentation structure verified')
+      Logger.info('Checking documentation structure...')
+      Logger.success('Documentation structure verified')
 
       if (options.fix) {
-        logger.info('Auto-fix not implemented yet')
+        Logger.info('Auto-fix not implemented yet')
       }
 
     } catch (error) {
-      logger.error('Verification failed:', error)
+      Logger.error(`Verification failed: ${(error as Error).message}`)
       process.exit(1)
     }
   })

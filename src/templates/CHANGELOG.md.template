@@ -1,0 +1,44 @@
+---
+title: {{PROJECT_NAME}} Changelog
+created: {{CREATED_DATE}}
+modified: {{MODIFIED_DATE}}
+tags: {{TAGS}}
+category: changelog
+type: versioning
+project: {{PROJECT_PATH}}
+version: {{VERSION}}
+author: {{AUTHOR}}
+status: {{STATUS}}
+---
+
+# Changelog
+
+All notable changes to {{PROJECT_NAME}} will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+{{UNRELEASED_ADDED}}
+
+### Changed
+{{UNRELEASED_CHANGED}}
+
+### Deprecated
+{{UNRELEASED_DEPRECATED}}
+
+### Removed
+{{UNRELEASED_REMOVED}}
+
+### Fixed
+{{UNRELEASED_FIXED}}
+
+### Security
+{{UNRELEASED_SECURITY}}
+
+{{VERSION_ENTRIES}}
+
+---
+*Generated with DocuMentor v3.1 on {{GENERATION_DATE}}*

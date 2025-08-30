@@ -499,7 +499,7 @@ func (t *TUI) updateProcessStats() {
 	}
 }
 
-func (t *TUI) updateInfoBox_old() {
+func (t *TUI) updateInfoBox() {
 	// Format lock status with detailed info
 	lockIcon := ""
 	lockColor := "green"

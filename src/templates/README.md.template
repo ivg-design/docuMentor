@@ -1,0 +1,64 @@
+---
+title: {{PROJECT_NAME}}
+created: {{CREATED_DATE}}
+modified: {{MODIFIED_DATE}}
+tags: {{TAGS}}
+category: documentation
+type: readme
+project: {{PROJECT_PATH}}
+version: {{VERSION}}
+author: {{AUTHOR}}
+status: {{STATUS}}
+aliases: {{ALIASES}}
+---
+
+# {{PROJECT_NAME}}
+
+{{DESCRIPTION}}
+
+## Overview
+
+{{OVERVIEW}}
+
+## Features
+
+{{FEATURES}}
+
+## Installation
+
+{{INSTALLATION}}
+
+## Usage
+
+{{USAGE}}
+
+## Configuration
+
+{{CONFIGURATION}}
+
+## API Reference
+
+{{API_REFERENCE}}
+
+## Examples
+
+{{EXAMPLES}}
+
+## Contributing
+
+{{CONTRIBUTING}}
+
+## License
+
+{{LICENSE}}
+
+## Support
+
+{{SUPPORT}}
+
+## Changelog
+
+{{CHANGELOG}}
+
+---
+*Generated with DocuMentor v3.1 on {{GENERATION_DATE}}*

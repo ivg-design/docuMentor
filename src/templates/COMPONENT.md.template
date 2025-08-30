@@ -1,0 +1,65 @@
+---
+title: {{COMPONENT_NAME}}
+created: {{CREATED_DATE}}
+modified: {{MODIFIED_DATE}}
+tags: {{TAGS}}
+category: component
+type: {{COMPONENT_TYPE}}
+project: {{PROJECT_PATH}}
+version: {{VERSION}}
+author: {{AUTHOR}}
+status: {{STATUS}}
+parent: {{PARENT_COMPONENT}}
+dependencies: {{DEPENDENCIES}}
+---
+
+# {{COMPONENT_NAME}}
+
+{{DESCRIPTION}}
+
+## Purpose
+
+{{PURPOSE}}
+
+## Interface
+
+{{INTERFACE}}
+
+## Properties
+
+{{PROPERTIES}}
+
+## Methods
+
+{{METHODS}}
+
+## Events
+
+{{EVENTS}}
+
+## Configuration
+
+{{CONFIGURATION}}
+
+## Usage Examples
+
+{{USAGE_EXAMPLES}}
+
+## Dependencies
+
+{{DEPENDENCIES_DETAIL}}
+
+## Testing
+
+{{TESTING}}
+
+## Performance Notes
+
+{{PERFORMANCE}}
+
+## Related Components
+
+{{RELATED}}
+
+---
+*Generated with DocuMentor v3.1 on {{GENERATION_DATE}}*

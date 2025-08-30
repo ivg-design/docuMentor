@@ -46,10 +46,12 @@ export class TUILauncher {
     }
 
     try {
-      // Spawn the TUI process
+      // Spawn the TUI process with proper TTY handling
+      // The TUI needs direct access to stdin/stdout/stderr for terminal control
       this.tuiProcess = spawn(tuiBinaryPath, [], {
-        stdio: ['pipe', 'inherit', 'inherit'],
-        env: { ...process.env, TERM: process.env.TERM || 'xterm-256color' }
+        stdio: ['pipe', 'inherit', 'inherit'],  // pipe stdin for messages, inherit stdout/stderr for TUI
+        env: { ...process.env, TERM: process.env.TERM || 'xterm-256color' },
+        shell: false
       })
 
       this.isRunning = true

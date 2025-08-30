@@ -1,4 +1,5 @@
 import * as path from 'path'
+import * as fs from 'fs'
 import { ClaudeClient, FrontmatterEnhancementRequest } from './ClaudeClient'
 import { formatDocumentDate } from '../utils/datetime'
 
@@ -39,6 +40,7 @@ export interface ProcessingContext {
   documentGraph: Map<string, string[]>;
   sourceFileMap: Map<string, string[]>;
   processingStats: any;
+  projectPath?: string;
 }
 
 /**
@@ -380,11 +382,33 @@ Keep the core structure intact. Focus on accuracy and usefulness.`
     document: ProcessedDocument,
     context: ProcessingContext
   ): string | undefined {
-    // Try to find version from package.json or similar
     for (const sourceFile of document.sourceFiles) {
       if (sourceFile.endsWith('package.json')) {
-        // In a real implementation, we'd parse the file
-        return '1.0.0' // Placeholder
+        try {
+          // Read and parse package.json to get actual version
+          const packagePath = path.join(context.projectPath || '.', sourceFile)
+          if (fs.existsSync(packagePath)) {
+            const packageContent = fs.readFileSync(packagePath, 'utf-8')
+            const packageJson = JSON.parse(packageContent)
+            return packageJson.version || '0.1.0'
+          }
+        } catch (error) {
+          // If parsing fails, continue checking
+          continue
+        }
+      }
+      
+      // Check for VERSION or .version files
+      if (sourceFile.endsWith('VERSION') || sourceFile.endsWith('.version')) {
+        try {
+          const versionPath = path.join(context.projectPath || '.', sourceFile)
+          if (fs.existsSync(versionPath)) {
+            const version = fs.readFileSync(versionPath, 'utf-8').trim()
+            if (version) return version
+          }
+        } catch {
+          continue
+        }
       }
     }
 

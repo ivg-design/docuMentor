@@ -1,0 +1,530 @@
+// PhaseManager - Orchestrates the 9-phase documentation system
+// Each phase has tasks, operations, and progress tracking
+
+import { EventEmitter } from 'events'
+import { tuiAdapter, TUIAdapter } from './TUIAdapter'
+import { Phase, PhaseStatus } from '../types'
+
+export interface PhaseDefinition {
+  id: Phase
+  name: string
+  weight: number // Percentage weight for overall progress
+  tasks: TaskDefinition[]
+}
+
+export interface TaskDefinition {
+  id: string
+  name: string
+  operations: OperationType[]
+  estimatedDuration?: number // ms
+}
+
+export enum OperationType {
+  // File Operations
+  READ = 'Read',
+  WRITE = 'Write',
+  EDIT = 'Edit',
+  DELETE = 'Delete',
+  
+  // Search Operations
+  SEARCH = 'Search',
+  FIND = 'Find',
+  LIST = 'List',
+  GLOB = 'Glob',
+  
+  // Analysis Operations
+  ANALYZE = 'Analyze',
+  SCAN = 'Scan',
+  PARSE = 'Parse',
+  EXTRACT = 'Extract',
+  
+  // Generation Operations
+  GENERATE = 'Generate',
+  TRANSFORM = 'Transform',
+  FORMAT = 'Format',
+  OPTIMIZE = 'Optimize',
+  
+  // System Operations
+  QUERY = 'Query',
+  VALIDATE = 'Validate',
+  CHECK = 'Check',
+  CONFIGURE = 'Configure',
+  
+  // Meta Operations
+  START = 'Start',
+  COMPLETE = 'Complete',
+  PROGRESS = 'Progress',
+  STATUS = 'Status'
+}
+
+export class PhaseManager extends EventEmitter {
+  private phases: PhaseDefinition[]
+  private currentPhaseIndex: number = -1
+  private currentTaskIndex: number = -1
+  private phaseProgress: Map<Phase, number> = new Map()
+  private tui: TUIAdapter
+  private startTime: number = 0
+  
+  constructor(tui?: TUIAdapter) {
+    super()
+    // Use provided TUI or singleton
+    this.tui = tui || tuiAdapter
+    this.phases = this.definePhases()
+    this.initializeProgress()
+  }
+  
+  // Define all 9 phases with their tasks and operations
+  private definePhases(): PhaseDefinition[] {
+    return [
+      {
+        id: 'analysis' as Phase, // Phase 1 in execution but using string id
+        name: 'INITIALIZATION',
+        weight: 5,
+        tasks: [
+          {
+            id: 'load-config',
+            name: 'Loading configuration',
+            operations: [OperationType.READ, OperationType.VALIDATE]
+          },
+          {
+            id: 'init-display',
+            name: 'Initializing display system',
+            operations: [OperationType.CONFIGURE, OperationType.START]
+          },
+          {
+            id: 'setup-dirs',
+            name: 'Setting up output directories',
+            operations: [OperationType.CHECK, OperationType.WRITE]
+          },
+          {
+            id: 'create-lock',
+            name: 'Creating lock file',
+            operations: [OperationType.WRITE]
+          },
+          {
+            id: 'validate-api',
+            name: 'Validating API keys',
+            operations: [OperationType.VALIDATE]
+          }
+        ]
+      },
+      {
+        id: 'generation' as Phase, // Phase 2 - VALIDATION
+        name: 'VALIDATION',
+        weight: 5,
+        tasks: [
+          {
+            id: 'safety-check',
+            name: 'Running safety checks',
+            operations: [OperationType.SCAN, OperationType.VALIDATE]
+          },
+          {
+            id: 'validate-structure',
+            name: 'Validating project structure',
+            operations: [OperationType.CHECK, OperationType.ANALYZE]
+          },
+          {
+            id: 'check-permissions',
+            name: 'Checking file permissions',
+            operations: [OperationType.CHECK]
+          },
+          {
+            id: 'verify-deps',
+            name: 'Verifying dependencies',
+            operations: [OperationType.READ, OperationType.VALIDATE]
+          }
+        ]
+      },
+      {
+        id: 'analysis' as Phase, // Phase 3 - ANALYSIS (actual analysis)
+        name: 'ANALYSIS',
+        weight: 20,
+        tasks: [
+          {
+            id: 'scan-dirs',
+            name: 'Scanning directory structure',
+            operations: [OperationType.SCAN, OperationType.LIST]
+          },
+          {
+            id: 'analyze-code',
+            name: 'Analyzing code patterns',
+            operations: [OperationType.READ, OperationType.ANALYZE, OperationType.PARSE]
+          },
+          {
+            id: 'identify-components',
+            name: 'Identifying components',
+            operations: [OperationType.FIND, OperationType.EXTRACT]
+          },
+          {
+            id: 'map-deps',
+            name: 'Mapping dependencies',
+            operations: [OperationType.ANALYZE, OperationType.EXTRACT]
+          },
+          {
+            id: 'extract-meta',
+            name: 'Extracting metadata',
+            operations: [OperationType.EXTRACT, OperationType.PARSE]
+          },
+          {
+            id: 'claude-analysis',
+            name: 'AI-powered project analysis',
+            operations: [OperationType.QUERY]
+          }
+        ]
+      },
+      {
+        id: 'enhancement' as Phase, // Phase 4 - PREPARATION
+        name: 'PREPARATION',
+        weight: 10,
+        tasks: [
+          {
+            id: 'create-structure',
+            name: 'Creating output structure',
+            operations: [OperationType.WRITE, OperationType.CONFIGURE]
+          },
+          {
+            id: 'setup-templates',
+            name: 'Setting up templates',
+            operations: [OperationType.READ, OperationType.CONFIGURE]
+          },
+          {
+            id: 'prepare-context',
+            name: 'Preparing documentation context',
+            operations: [OperationType.GENERATE, OperationType.TRANSFORM]
+          },
+          {
+            id: 'load-existing',
+            name: 'Loading existing documentation',
+            operations: [OperationType.READ, OperationType.PARSE]
+          }
+        ]
+      },
+      {
+        id: 'generation' as Phase, // Phase 5 - GENERATION (main)
+        name: 'GENERATION',
+        weight: 30,
+        tasks: [
+          {
+            id: 'create-readme',
+            name: 'Creating README.md',
+            operations: [OperationType.GENERATE, OperationType.WRITE, OperationType.QUERY]
+          },
+          {
+            id: 'generate-api',
+            name: 'Generating API documentation',
+            operations: [OperationType.ANALYZE, OperationType.GENERATE, OperationType.WRITE, OperationType.QUERY]
+          },
+          {
+            id: 'create-architecture',
+            name: 'Creating ARCHITECTURE.md',
+            operations: [OperationType.GENERATE, OperationType.WRITE, OperationType.QUERY]
+          },
+          {
+            id: 'write-guides',
+            name: 'Writing guides and tutorials',
+            operations: [OperationType.GENERATE, OperationType.WRITE, OperationType.QUERY]
+          },
+          {
+            id: 'create-changelog',
+            name: 'Generating CHANGELOG.md',
+            operations: [OperationType.EXTRACT, OperationType.GENERATE, OperationType.WRITE]
+          },
+          {
+            id: 'component-docs',
+            name: 'Creating component documentation',
+            operations: [OperationType.ANALYZE, OperationType.GENERATE, OperationType.WRITE, OperationType.QUERY]
+          }
+        ]
+      },
+      {
+        id: 'enhancement' as Phase, // Phase 6 - ENHANCEMENT
+        name: 'ENHANCEMENT',
+        weight: 15,
+        tasks: [
+          {
+            id: 'add-frontmatter',
+            name: 'Adding frontmatter',
+            operations: [OperationType.EDIT, OperationType.TRANSFORM]
+          },
+          {
+            id: 'create-tags',
+            name: 'Creating tag system',
+            operations: [OperationType.ANALYZE, OperationType.GENERATE]
+          },
+          {
+            id: 'build-backlinks',
+            name: 'Building backlinks',
+            operations: [OperationType.ANALYZE, OperationType.GENERATE, OperationType.EDIT]
+          },
+          {
+            id: 'generate-indexes',
+            name: 'Generating index files',
+            operations: [OperationType.GENERATE, OperationType.WRITE]
+          },
+          {
+            id: 'optimize-tags',
+            name: 'Optimizing tags with AI',
+            operations: [OperationType.QUERY, OperationType.OPTIMIZE]
+          }
+        ]
+      },
+      {
+        id: 'formatting' as Phase, // Phase 7 - FORMATTING
+        name: 'FORMATTING',
+        weight: 5,
+        tasks: [
+          {
+            id: 'format-markdown',
+            name: 'Formatting markdown files',
+            operations: [OperationType.FORMAT, OperationType.EDIT]
+          },
+          {
+            id: 'validate-syntax',
+            name: 'Validating syntax',
+            operations: [OperationType.VALIDATE, OperationType.CHECK]
+          },
+          {
+            id: 'optimize-images',
+            name: 'Optimizing images',
+            operations: [OperationType.OPTIMIZE, OperationType.TRANSFORM]
+          },
+          {
+            id: 'create-toc',
+            name: 'Creating table of contents',
+            operations: [OperationType.GENERATE, OperationType.EDIT]
+          }
+        ]
+      },
+      {
+        id: 'obsidian-integration' as Phase, // Phase 8 - INTEGRATION
+        name: 'INTEGRATION',
+        weight: 5,
+        tasks: [
+          {
+            id: 'setup-obsidian',
+            name: 'Setting up Obsidian integration',
+            operations: [OperationType.CONFIGURE, OperationType.WRITE]
+          },
+          {
+            id: 'create-graph',
+            name: 'Creating graph connections',
+            operations: [OperationType.ANALYZE, OperationType.GENERATE]
+          },
+          {
+            id: 'build-search',
+            name: 'Building search index',
+            operations: [OperationType.EXTRACT, OperationType.GENERATE, OperationType.WRITE]
+          },
+          {
+            id: 'setup-plugins',
+            name: 'Configuring plugins',
+            operations: [OperationType.CONFIGURE]
+          }
+        ]
+      },
+      {
+        id: 'save' as Phase, // Phase 9 - FINALIZATION
+        name: 'FINALIZATION',
+        weight: 5,
+        tasks: [
+          {
+            id: 'generate-summary',
+            name: 'Generating documentation summary',
+            operations: [OperationType.ANALYZE, OperationType.GENERATE, OperationType.WRITE]
+          },
+          {
+            id: 'create-audit',
+            name: 'Creating audit report',
+            operations: [OperationType.ANALYZE, OperationType.GENERATE, OperationType.WRITE]
+          },
+          {
+            id: 'cleanup',
+            name: 'Cleaning up temporary files',
+            operations: [OperationType.DELETE, OperationType.CHECK]
+          },
+          {
+            id: 'save-state',
+            name: 'Saving final state',
+            operations: [OperationType.WRITE, OperationType.COMPLETE]
+          }
+        ]
+      }
+    ]
+  }
+  
+  private initializeProgress(): void {
+    this.phases.forEach(phase => {
+      this.phaseProgress.set(phase.id, 0)
+    })
+  }
+  
+  // Start the phase system
+  async start(): Promise<void> {
+    this.startTime = Date.now()
+    this.emit('start', { phases: this.phases })
+    
+    // Send initial phase info to TUI
+    this.tui.logInfo('Starting', `${this.phases.length}-phase documentation process`)
+  }
+  
+  // Execute a specific phase
+  async executePhase(phaseIndex: number): Promise<void> {
+    if (phaseIndex < 0 || phaseIndex >= this.phases.length) {
+      throw new Error(`Invalid phase index: ${phaseIndex}`)
+    }
+    
+    const phase = this.phases[phaseIndex]
+    this.currentPhaseIndex = phaseIndex
+    this.currentTaskIndex = -1
+    
+    // Send phase start to TUI
+    this.tui.setPhase(phase.name, phaseIndex + 1, this.phases.length)
+    this.tui.updatePhase(phase.name, 'Starting')
+    
+    this.emit('phase:start', { phase, index: phaseIndex })
+    
+    // Execute each task in the phase
+    for (let i = 0; i < phase.tasks.length; i++) {
+      await this.executeTask(phase, i)
+    }
+    
+    // Mark phase complete
+    this.phaseProgress.set(phase.id, 100)
+    this.tui.updatePhase(phase.name, 'Complete')
+    
+    this.emit('phase:complete', { phase, index: phaseIndex })
+  }
+  
+  // Execute a specific task
+  private async executeTask(phase: PhaseDefinition, taskIndex: number): Promise<void> {
+    const task = phase.tasks[taskIndex]
+    this.currentTaskIndex = taskIndex
+    
+    // Send task update to TUI
+    this.tui.createTask(`${phase.id}-${task.id}`, task.name, 100)
+    this.emit('task:start', { phase, task, index: taskIndex })
+    
+    // Report each operation
+    for (const operation of task.operations) {
+      await this.reportOperation(operation, task.name)
+    }
+    
+    // Update phase progress
+    const taskProgress = ((taskIndex + 1) / phase.tasks.length) * 100
+    this.phaseProgress.set(phase.id, taskProgress)
+    
+    // Send progress update
+    this.sendProgressUpdate(phase, taskProgress)
+    
+    this.tui.completeTask(`${phase.id}-${task.id}`, true)
+    this.emit('task:complete', { phase, task, index: taskIndex })
+  }
+  
+  // Report an operation
+  async reportOperation(operation: OperationType, context: string): Promise<void> {
+    // Send to TUI as a tool call
+    this.tui.streamFile(operation, context)
+    this.emit('operation', { operation, context })
+  }
+  
+  // Phase update is now handled directly via TUI methods
+  
+  // Send progress update
+  private sendProgressUpdate(phase: PhaseDefinition, progress: number): void {
+    const overallProgress = this.calculateOverallProgress()
+    
+    // Update progress in TUI
+    this.tui.updateDocumentProgress(
+      0, // Will be set by caller
+      0, // Will be set by caller
+      phase.tasks[this.currentTaskIndex]?.name
+    )
+  }
+  
+  // Calculate overall progress based on phase weights
+  private calculateOverallProgress(): number {
+    let totalProgress = 0
+    
+    this.phases.forEach((phase, index) => {
+      const phaseProgress = this.phaseProgress.get(phase.id) || 0
+      
+      // If we've completed this phase
+      if (index < this.currentPhaseIndex) {
+        totalProgress += phase.weight
+      }
+      // If this is the current phase
+      else if (index === this.currentPhaseIndex) {
+        totalProgress += (phaseProgress / 100) * phase.weight
+      }
+    })
+    
+    return totalProgress
+  }
+  
+  // Get current status
+  getStatus(): {
+    currentPhase: PhaseDefinition | null
+    currentTask: TaskDefinition | null
+    overallProgress: number
+    phaseProgress: number
+  } {
+    const currentPhase = this.currentPhaseIndex >= 0 ? this.phases[this.currentPhaseIndex] : null
+    const currentTask = currentPhase && this.currentTaskIndex >= 0 
+      ? currentPhase.tasks[this.currentTaskIndex] 
+      : null
+    
+    return {
+      currentPhase,
+      currentTask,
+      overallProgress: this.calculateOverallProgress(),
+      phaseProgress: currentPhase ? (this.phaseProgress.get(currentPhase.id) || 0) : 0
+    }
+  }
+  
+  // Execute all phases in sequence
+  async executeAll(): Promise<void> {
+    await this.start()
+    
+    for (let i = 0; i < this.phases.length; i++) {
+      await this.executePhase(i)
+    }
+    
+    this.emit('complete', {
+      duration: Date.now() - this.startTime,
+      phases: this.phases.length
+    })
+  }
+  
+  // Allow customization of phase order from config
+  setPhaseOrder(phaseIds: Phase[]): void {
+    const newOrder: PhaseDefinition[] = []
+    
+    for (const id of phaseIds) {
+      const phase = this.phases.find(p => p.id === id)
+      if (phase) {
+        newOrder.push(phase)
+      }
+    }
+    
+    this.phases = newOrder
+    this.initializeProgress()
+  }
+  
+  // Add custom task to a phase
+  addTask(phaseId: Phase, task: TaskDefinition): void {
+    const phase = this.phases.find(p => p.id === phaseId)
+    if (phase) {
+      phase.tasks.push(task)
+    }
+  }
+  
+  // Skip a phase
+  skipPhase(phaseId: Phase): void {
+    const index = this.phases.findIndex(p => p.id === phaseId)
+    if (index >= 0) {
+      this.phases.splice(index, 1)
+    }
+  }
+}
+
+export default PhaseManager

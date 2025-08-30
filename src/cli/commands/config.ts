@@ -1,4 +1,5 @@
 import { Command } from 'commander'
+import { Logger } from '../../core/Logger'
 import { promises as fs } from 'fs'
 import { resolve, join, dirname } from 'path'
 import { existsSync } from 'fs'
@@ -147,12 +148,13 @@ configCommand
       logger.showHeader('Current Configuration', `Config file: ${manager.getConfigPath()}`)
 
       if (options.expanded) {
-        console.log('Output Path (expanded):', manager.getExpandedOutputPath(config))
-        console.log('Config Path:', manager.getConfigPath())
-        console.log('')
+        // Use Logger for all output
+        Logger.info(`Output Path (expanded): ${manager.getExpandedOutputPath(config)}`)
+        Logger.info(`Config Path: ${manager.getConfigPath()}`)
       }
 
-      console.log(JSON.stringify(config, null, 2))
+      // For JSON output, write directly to stderr to avoid mixing with TUI protocol
+      process.stderr.write(JSON.stringify(config, null, 2) + '\n')
 
     } catch (error) {
       logger.error('Failed to show configuration:', error)

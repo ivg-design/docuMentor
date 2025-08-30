@@ -1,0 +1,63 @@
+---
+title: {{PROJECT_NAME}} API Documentation
+created: {{CREATED_DATE}}
+modified: {{MODIFIED_DATE}}
+tags: {{TAGS}}
+category: api
+type: reference
+project: {{PROJECT_PATH}}
+version: {{VERSION}}
+author: {{AUTHOR}}
+status: {{STATUS}}
+---
+
+# {{PROJECT_NAME}} API Documentation
+
+{{DESCRIPTION}}
+
+## Table of Contents
+
+{{TOC}}
+
+## Base Configuration
+
+{{BASE_CONFIG}}
+
+## Authentication
+
+{{AUTHENTICATION}}
+
+## Endpoints
+
+{{ENDPOINTS}}
+
+## Data Models
+
+{{DATA_MODELS}}
+
+## Request Examples
+
+{{REQUEST_EXAMPLES}}
+
+## Response Examples
+
+{{RESPONSE_EXAMPLES}}
+
+## Error Handling
+
+{{ERROR_HANDLING}}
+
+## Rate Limiting
+
+{{RATE_LIMITING}}
+
+## Versioning
+
+{{VERSIONING}}
+
+## SDK References
+
+{{SDK_REFERENCES}}
+
+---
+*Generated with DocuMentor v3.1 on {{GENERATION_DATE}}*

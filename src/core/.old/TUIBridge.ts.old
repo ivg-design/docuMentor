@@ -212,9 +212,9 @@ export class TUIBridge {
       data
     }
 
-    // Send to stdout for Go TUI consumption
+    // Always send to stdout - the wrapper script handles routing
     const jsonMessage = JSON.stringify(message)
-    process.stdout.write(`TUI_MSG:${jsonMessage}\n`)
+    console.log(jsonMessage)
 
     // Increment message ID
     this.messageId++

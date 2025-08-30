@@ -1,0 +1,76 @@
+---
+title: {{PROJECT_NAME}} Architecture
+created: {{CREATED_DATE}}
+modified: {{MODIFIED_DATE}}
+tags: {{TAGS}}
+category: architecture
+type: technical
+project: {{PROJECT_PATH}}
+version: {{VERSION}}
+author: {{AUTHOR}}
+status: {{STATUS}}
+diagram: {{DIAGRAM_PATH}}
+---
+
+# {{PROJECT_NAME}} Architecture
+
+{{DESCRIPTION}}
+
+## System Overview
+
+{{SYSTEM_OVERVIEW}}
+
+## Architecture Principles
+
+{{PRINCIPLES}}
+
+## Component Diagram
+
+{{COMPONENT_DIAGRAM}}
+
+## Core Components
+
+{{CORE_COMPONENTS}}
+
+## Data Flow
+
+{{DATA_FLOW}}
+
+## Technology Stack
+
+{{TECH_STACK}}
+
+## Design Patterns
+
+{{DESIGN_PATTERNS}}
+
+## Module Structure
+
+{{MODULE_STRUCTURE}}
+
+## Dependencies
+
+{{DEPENDENCIES}}
+
+## Security Architecture
+
+{{SECURITY}}
+
+## Performance Considerations
+
+{{PERFORMANCE}}
+
+## Scalability
+
+{{SCALABILITY}}
+
+## Deployment Architecture
+
+{{DEPLOYMENT}}
+
+## Decision Records
+
+{{ADR}}
+
+---
+*Generated with DocuMentor v3.1 on {{GENERATION_DATE}}*

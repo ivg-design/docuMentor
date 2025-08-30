@@ -1,9 +1,5 @@
 {
-  "status": "running",
-  "phase": 1,
-  "totalPhases": 9,
-  "phaseName": "Analysis",
-  "currentTask": "Analyzing project structure",
-  "progress": 0,
-  "timestamp": 1756579377643
+  "status": "error",
+  "error": "Project tag must start with #project/",
+  "timestamp": "08-30-2025 15:43:26"
 }
