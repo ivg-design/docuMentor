@@ -336,7 +336,7 @@ export class LockFileManager extends EventEmitter {
       const tempPath = `${this.lockFilePath}.tmp`
       const lockContent = JSON.stringify(lockInfo, null, 2)
 
-      await fs.writeFile(tempPath, lockContent, 'utf8')
+      await fs.writeFile(tempPath, lockContent, 'utf-8')
       await fs.rename(tempPath, this.lockFilePath)
 
       this.lockInfo = lockInfo
@@ -430,7 +430,7 @@ export class LockFileManager extends EventEmitter {
      */
   private async readLockFile(): Promise<LockInfo | null> {
     try {
-      const content = await fs.readFile(this.lockFilePath, 'utf8')
+      const content = await fs.readFile(this.lockFilePath, 'utf-8')
       const lockInfo = JSON.parse(content) as LockInfo
 
       // Validate required fields
@@ -474,7 +474,7 @@ export class LockFileManager extends EventEmitter {
       const tempPath = `${this.lockFilePath}.tmp`
       const lockContent = JSON.stringify(updatedLock, null, 2)
 
-      await fs.writeFile(tempPath, lockContent, 'utf8')
+      await fs.writeFile(tempPath, lockContent, 'utf-8')
       await fs.rename(tempPath, this.lockFilePath)
 
       this.lockInfo = updatedLock
@@ -645,7 +645,7 @@ export class LockFileManager extends EventEmitter {
           }
 
           // Synchronous write for exit handler
-          writeFileSync(this.lockFilePath, JSON.stringify(interruptedLock, null, 2), 'utf8')
+          writeFileSync(this.lockFilePath, JSON.stringify(interruptedLock, null, 2), 'utf-8')
           this.emit('lock_interrupted', { lockInfo: interruptedLock })
         } else {
           // Remove lock file completely
@@ -735,7 +735,7 @@ export class LockUtils {
         return null
       }
 
-      const content = readFileSync(lockFilePath, 'utf8')
+      const content = readFileSync(lockFilePath, 'utf-8')
       const lockInfo = JSON.parse(content) as LockInfo
 
       // Convert date strings back to Date objects

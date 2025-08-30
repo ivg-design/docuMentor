@@ -1,7 +1,8 @@
 import { Command } from 'commander'
-import { resolve, join, dirname } from 'path'
+import { resolve, join } from 'path'
 import { logger } from '../display'
-import { ConfigManager, DocumentorConfig } from './config'
+import { ConfigManager } from './config'
+import { DocumentorConfig } from '../../types'
 import { DocumentEngine } from './generate'
 import { existsSync, readFileSync } from 'fs'
 

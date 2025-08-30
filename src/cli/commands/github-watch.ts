@@ -6,7 +6,8 @@ import { existsSync } from 'fs'
 import * as crypto from 'crypto'
 import { spawn } from 'child_process'
 import { logger } from '../display'
-import { ConfigManager, DocumentorConfig } from './config'
+import { ConfigManager } from './config'
+import { DocumentorConfig } from '../../types'
 import { DocumentEngine } from './generate'
 
 interface GitHubWebhookEvent {
@@ -124,7 +125,7 @@ class GitHubWatcher {
 
     const expectedSignature = 'sha256=' + crypto
       .createHmac('sha256', secret)
-      .update(body, 'utf8')
+      .update(body, 'utf-8')
       .digest('hex')
 
     return crypto.timingSafeEqual(

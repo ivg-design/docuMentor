@@ -66,7 +66,7 @@ class SecureString {
   private cleared = false
 
   constructor(value: string) {
-    this.buffer = Buffer.from(value, 'utf8')
+    this.buffer = Buffer.from(value, 'utf-8')
     // Immediately clear the input string from V8's string pool (best effort)
     try {
       // Force garbage collection if available (development environments)
@@ -85,7 +85,7 @@ class SecureString {
     if (this.cleared || !this.buffer) {
       throw new Error('SecureString has been cleared')
     }
-    return this.buffer.toString('utf8')
+    return this.buffer.toString('utf-8')
   }
 
   /**

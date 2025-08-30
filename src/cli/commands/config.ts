@@ -2,25 +2,11 @@ import { Command } from 'commander'
 import { promises as fs } from 'fs'
 import { resolve, join, dirname } from 'path'
 import { existsSync } from 'fs'
-import { homedir } from 'os'
 import { spawn } from 'child_process'
 import { logger } from '../display'
-import { Config } from '../../types'
+import { Config, DocumentorConfig } from '../../types'
 import { ConfigLoader } from '../../core/Config'
-
-// Extend Config for CLI-specific fields
-export interface DocumentorConfig extends Config {
-  github?: {
-    token?: string;
-    webhookSecret?: string;
-    defaultBranch: string;
-  };
-  watch?: {
-    includePaths: string[];
-    excludePaths: string[];
-    debounceMs: number;
-  };
-}
+import { expandPath } from '../../utils/paths'
 
 // Use the centralized default config and add CLI-specific defaults
 const defaultConfig: DocumentorConfig = {
@@ -42,14 +28,7 @@ class ConfigManager {
     this.configPath = configPath || join(process.cwd(), '.documentor', 'config.json')
   }
 
-  private expandPath(path: string): string {
-    if (path.startsWith('~/')) {
-      return join(homedir(), path.slice(2))
-    }
-    return path.replace(/\$(\w+)/g, (match, varName) => {
-      return process.env[varName] || match
-    })
-  }
+  // expandPath method removed - using utility function
 
   async ensureConfigDirectory(): Promise<void> {
     const dir = dirname(this.configPath)
@@ -65,7 +44,7 @@ class ConfigManager {
         return defaultConfig
       }
 
-      const content = await fs.readFile(this.configPath, 'utf8')
+      const content = await fs.readFile(this.configPath, 'utf-8')
       const config = JSON.parse(content) as Partial<DocumentorConfig>
 
       // Merge with defaults
@@ -90,7 +69,7 @@ class ConfigManager {
   async saveConfig(config: DocumentorConfig): Promise<void> {
     try {
       await this.ensureConfigDirectory()
-      await fs.writeFile(this.configPath, JSON.stringify(config, null, 2), 'utf8')
+      await fs.writeFile(this.configPath, JSON.stringify(config, null, 2), 'utf-8')
       logger.success(`Config saved to: ${this.configPath}`)
     } catch (error) {
       logger.error(`Failed to save config to ${this.configPath}:`, error)
@@ -103,7 +82,7 @@ class ConfigManager {
   }
 
   getExpandedOutputPath(config: DocumentorConfig): string {
-    return resolve(this.expandPath(config.output.path))
+    return resolve(expandPath(config.output.path))
   }
 }
 
@@ -322,3 +301,4 @@ configCommand
   })
 
 export { configCommand, ConfigManager, defaultConfig }
+export type { DocumentorConfig } from '../../types'

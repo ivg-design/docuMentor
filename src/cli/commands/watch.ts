@@ -3,7 +3,8 @@ import { watch, promises as fs } from 'fs'
 import { resolve, join, relative, extname } from 'path'
 import { existsSync, statSync } from 'fs'
 import { logger } from '../display'
-import { ConfigManager, DocumentorConfig } from './config'
+import { ConfigManager } from './config'
+import { DocumentorConfig } from '../../types'
 import { DocumentEngine } from './generate'
 
 interface WatchOptions {

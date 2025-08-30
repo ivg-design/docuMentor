@@ -1,5 +1,5 @@
 import * as path from 'path'
-import { ClaudeClient } from './ClaudeClient'
+import { ClaudeClient, FrontmatterEnhancementRequest } from './ClaudeClient'
 
 export interface UniversalFrontmatter {
   project: string;
@@ -137,8 +137,12 @@ export class ObsidianFrontmatter {
         return frontmatter
       }
 
-      const prompt = this.createAIEnhancementPrompt(frontmatter, document)
-      const enhancement = await this.claudeClient.enhanceFrontmatter(prompt)
+      const request: FrontmatterEnhancementRequest = {
+        frontmatter,
+        document,
+        contentPreview: document.content.substring(0, 500)
+      }
+      const enhancement = await this.claudeClient.enhanceFrontmatter(request)
 
       if (enhancement) {
         return this.mergeAIEnhancement(frontmatter, enhancement)

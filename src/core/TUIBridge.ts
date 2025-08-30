@@ -231,7 +231,7 @@ export class TUIBridge {
 
   private setupPasswordResponseListener(): void {
     // Listen for password responses from stdin
-    process.stdin.setEncoding('utf8')
+    process.stdin.setEncoding('utf-8')
     process.stdin.on('data', (data: string) => {
       try {
         // Look for password response messages

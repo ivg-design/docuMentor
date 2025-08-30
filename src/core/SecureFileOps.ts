@@ -308,7 +308,7 @@ export class SecureFileOps extends EventEmitter {
   /**
      * Attempt to read file with permission handling
      */
-  async readFileSecure(filePath: string, encoding: BufferEncoding = 'utf8'): Promise<FileAccessResult> {
+  async readFileSecure(filePath: string, encoding: BufferEncoding = 'utf-8'): Promise<FileAccessResult> {
     if (this.destroyed) {
       return { success: false, error: new Error('SecureFileOps destroyed') }
     }
@@ -346,7 +346,7 @@ export class SecureFileOps extends EventEmitter {
             this.emit('file_read_success', { path: absolutePath, method: 'sudo' })
             return {
               success: true,
-              content: encoding === 'utf8' ? result.stdout : Buffer.from(result.stdout),
+              content: encoding === 'utf-8' ? result.stdout : Buffer.from(result.stdout),
               usedSudo: true
             }
           } else {
@@ -376,7 +376,7 @@ export class SecureFileOps extends EventEmitter {
   /**
      * Attempt to write file with permission handling
      */
-  async writeFileSecure(filePath: string, content: string | Buffer, encoding: BufferEncoding = 'utf8'): Promise<FileAccessResult> {
+  async writeFileSecure(filePath: string, content: string | Buffer, encoding: BufferEncoding = 'utf-8'): Promise<FileAccessResult> {
     if (this.destroyed) {
       return { success: false, error: new Error('SecureFileOps destroyed') }
     }

@@ -98,7 +98,7 @@ class LoggerService {
 
     try {
       // Read existing content and append
-      const existingResult = await this.secureFileOps.readFileSecure(this.logFilePath, 'utf8')
+      const existingResult = await this.secureFileOps.readFileSecure(this.logFilePath, 'utf-8')
       const existingContent = existingResult.success ? existingResult.content as string : ''
       
       await this.secureFileOps.writeFileSecure(

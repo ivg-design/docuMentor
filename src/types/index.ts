@@ -45,6 +45,20 @@ export interface ClaudeConfig {
   temperature: number
 }
 
+// CLI-specific configuration extensions
+export interface DocumentorConfig extends Config {
+  github?: {
+    token?: string
+    webhookSecret?: string
+    defaultBranch: string
+  }
+  watch?: {
+    includePaths: string[]
+    excludePaths: string[]
+    debounceMs: number
+  }
+}
+
 // ============================================================================
 // Project Analysis Interfaces
 // ============================================================================

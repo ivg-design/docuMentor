@@ -1,6 +1,7 @@
 import { ClaudeClient } from './ClaudeClient'
 
 export interface ProcessedDocument {
+  id?: string;
   filePath: string;
   title: string;
   type: string;
@@ -25,6 +26,7 @@ export interface ProcessingContext {
 export interface TagAnalysis {
   tag: string;
   frequency: number;
+  score?: number;
   documents: string[];
   parentTag?: string;
   childTags: string[];
@@ -64,10 +66,14 @@ export class ObsidianTagOptimizer {
   private config: any
   private claudeClient: ClaudeClient
   private tagAnalysisCache: Map<string, TagAnalysis> = new Map()
+  private projectTag: string
+  private MIN_TAGS_PER_DOC: number = 3
+  private MAX_TAGS_PER_DOC: number = 7
 
   constructor(config: any, claudeClient: ClaudeClient) {
     this.config = config
     this.claudeClient = claudeClient
+    this.projectTag = config.project?.name?.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'project'
   }
 
   /**
@@ -321,8 +327,23 @@ export class ObsidianTagOptimizer {
     tagAnalyses: TagAnalysis[]
   ): Promise<Map<string, TagOptimizationResult>> {
     try {
-      const prompt = this.createGroupOptimizationPrompt(documents, tagAnalyses)
-      const aiResponse = await this.claudeClient.optimizeTagsForDocumentGroup(prompt)
+      const request = {
+        documents: documents.map(d => ({
+          id: d.id || d.filePath,
+          title: d.title,
+          tags: d.tags,
+          type: d.type
+        })),
+        tagAnalysis: tagAnalyses.map(t => ({
+          tag: t.tag,
+          frequency: t.frequency,
+          score: t.score
+        })),
+        projectTag: this.projectTag,
+        minTags: this.MIN_TAGS_PER_DOC,
+        maxTags: this.MAX_TAGS_PER_DOC
+      }
+      const aiResponse = await this.claudeClient.optimizeTags(request)
 
       return this.parseOptimizationResponse(aiResponse, documents)
     } catch (error) {

@@ -3,7 +3,8 @@ import { resolve, basename, join } from 'path'
 import { existsSync, statSync } from 'fs'
 import { homedir } from 'os'
 import { logger, ProgressInfo } from '../display'
-import { ConfigManager, DocumentorConfig } from './config'
+import { ConfigManager } from './config'
+import { DocumentorConfig } from '../../types'
 import FileWriter from '../../core/FileWriter'
 import { ProjectTypeDetector, DetectionResult } from '../../core/ProjectTypeDetector'
 import { FileScanner } from '../../core/FileScanner'
@@ -11,6 +12,7 @@ import { ObsidianIntegration, ObsidianConfig } from '../../core/ObsidianIntegrat
 import { SecureFileOps } from '../../core/SecureFileOps'
 import { PasswordBridge } from '../../core/PasswordBridge'
 import { spawn } from 'child_process'
+import { expandPath } from '../../utils/paths'
 
 // 9-Phase Documentation Generation Engine
 class DocumentEngine {
@@ -24,17 +26,13 @@ class DocumentEngine {
   constructor(config: DocumentorConfig, projectPath: string) {
     this.config = config
     this.projectPath = resolve(projectPath)
-    this.outputPath = this.expandPath(config.output.path)
+    this.outputPath = expandPath(config.output.path)
     this.fileWriter = new FileWriter(this.outputPath, this.projectPath)
     this.lockFilePath = join(this.projectPath, '.documentor.lock')
     this.startTime = Date.now()
 
     // Configure logger lock file
     logger.setLockFile(this.lockFilePath)
-  }
-
-  private expandPath(path: string): string {
-    return path.replace(/^~\//, homedir() + '/')
   }
 
   // Main orchestrator - runs all 9 phases

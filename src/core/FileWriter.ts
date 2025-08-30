@@ -1,8 +1,9 @@
 import { promises as fs } from 'fs'
 import { resolve, dirname, relative, join, normalize, isAbsolute } from 'path'
 import { existsSync, statSync } from 'fs'
-import { homedir } from 'os'
 import { logger } from '../cli/display'
+import { expandPath } from '../utils/paths'
+import { ensureDir } from '../utils/files'
 
 export interface FileWriteOptions {
   format: 'obsidian' | 'markdown';
@@ -24,7 +25,7 @@ export class FileWriter {
   private projectPath: string
 
   constructor(outputBasePath: string, projectPath: string, policy?: Partial<SecurityPolicy>) {
-    this.outputBasePath = this.expandPath(outputBasePath)
+    this.outputBasePath = expandPath(outputBasePath)
     this.projectPath = resolve(projectPath)
 
     this.securityPolicy = {
@@ -48,17 +49,7 @@ export class FileWriter {
     )
   }
 
-  // Expand ~ and environment variables in paths
-  private expandPath(path: string): string {
-    if (path.startsWith('~/')) {
-      return join(homedir(), path.slice(2))
-    }
-
-    // Expand environment variables like $HOME, $USER
-    return path.replace(/\$(\w+)/g, (match, varName) => {
-      return process.env[varName] || match
-    })
-  }
+  // expandPath method removed - using utility function
 
   // Validate that the target path is secure and allowed
   private validatePath(targetPath: string): { isValid: boolean; reason?: string; resolvedPath: string } {
@@ -154,7 +145,7 @@ export class FileWriter {
       }
 
       // Write file
-      await fs.writeFile(finalPath, content, { encoding: options.encoding || 'utf8' })
+      await fs.writeFile(finalPath, content, { encoding: options.encoding || 'utf-8' })
 
       logger.debug(`File written: ${finalPath}`, { size: content.length, format: options.format })
       return finalPath
@@ -171,7 +162,7 @@ export class FileWriter {
 
     try {
       const lockContent = typeof content === 'string' ? content : JSON.stringify(content, null, 2)
-      await fs.writeFile(lockPath, lockContent, 'utf8')
+      await fs.writeFile(lockPath, lockContent, 'utf-8')
 
       logger.debug(`Lock file written: ${lockPath}`)
       return lockPath
@@ -276,7 +267,7 @@ export class FileWriter {
 
       // Test write access
       const testFile = join(validation.resolvedPath, '.documentor-test')
-      await fs.writeFile(testFile, 'test', 'utf8')
+      await fs.writeFile(testFile, 'test', 'utf-8')
       await fs.unlink(testFile)
 
       logger.debug(`Output directory verified: ${validation.resolvedPath}`)

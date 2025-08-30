@@ -6,6 +6,9 @@ import { promises as fs, readFileSync } from 'fs'
 import { join, resolve, basename } from 'path'
 import { homedir } from 'os'
 import { Config, Phase } from '../types/index.js'
+import { expandPath } from '../utils/paths.js'
+import { readPackageJson, hasPackageJson } from '../utils/files.js'
+import { logger } from '../cli/display.js'
 
 // ============================================================================
 // Configuration Loader Class
@@ -240,11 +243,11 @@ export class ConfigLoader {
    */
   private static async processConfig(config: Config, projectPath?: string): Promise<Config> {
     // Expand paths
-    config.output.path = ConfigLoader.expandPath(config.output.path)
+    config.output.path = expandPath(config.output.path)
 
     // Auto-detect project name if needed
     if (config.project.name === 'auto-detect' && projectPath) {
-      const projectName = ConfigLoader.detectProjectName(projectPath)
+      const projectName = await ConfigLoader.detectProjectName(projectPath)
       config.project.name = projectName
     }
 
@@ -284,13 +287,14 @@ export class ConfigLoader {
   /**
    * Auto-detect project name from path
    */
-  private static detectProjectName(projectPath: string): string {
+  private static async detectProjectName(projectPath: string): Promise<string> {
     try {
       // Try to get name from package.json
-      const packageJsonPath = join(projectPath, 'package.json')
-      const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'))
-      if (packageJson.name) {
-        return packageJson.name
+      if (hasPackageJson(projectPath)) {
+        const packageJson = await readPackageJson(projectPath)
+        if (packageJson.name) {
+          return packageJson.name
+        }
       }
     } catch {
       // Ignore package.json errors
@@ -320,7 +324,7 @@ export class ConfigLoader {
     const normalizedPhases = validPhases.filter(phase => phases.includes(phase))
 
     if (normalizedPhases.length !== validPhases.length) {
-      console.warn('Some phases were missing from configuration, using default phase order')
+      logger.warn('Some phases were missing from configuration, using default phase order')
       return validPhases
     }
 
@@ -355,7 +359,7 @@ export class ConfigLoader {
     // Validate model
     const validModels = ['claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku']
     if (!validModels.includes(claudeConfig.model)) {
-      console.warn(`Unknown Claude model: ${claudeConfig.model}. Proceeding anyway.`)
+      logger.warn(`Unknown Claude model: ${claudeConfig.model}. Proceeding anyway.`)
     }
   }
 
@@ -397,7 +401,7 @@ export class ConfigLoader {
    * Initialize configuration in project directory
    */
   static async initializeProjectConfig(projectPath: string): Promise<Config> {
-    const projectName = ConfigLoader.detectProjectName(projectPath)
+    const projectName = await ConfigLoader.detectProjectName(projectPath)
 
     const initialConfig: Partial<Config> = {
       project: {
