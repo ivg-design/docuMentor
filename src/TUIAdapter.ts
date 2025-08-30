@@ -29,7 +29,10 @@ export class TUIAdapter extends EventEmitter {
     console.log(JSON.stringify(message));
   }
 
-  start() {
+  start(projectName?: string) {
+    if (projectName) {
+      this.displayTitle(projectName);
+    }
     this.send({
       type: 'log',
       level: 'info',
@@ -76,15 +79,16 @@ export class TUIAdapter extends EventEmitter {
     });
   }
 
-  updateTask(id: string, progress: number, status?: string) {
+  updateTask(id: string, progress: number, status?: string, detail?: string) {
     const task = this.tasks.get(id);
     if (task) {
       task.progress = progress;
       if (status) {
+        const content = detail ? `${status} - ${detail}` : status;
         this.send({
           type: 'log',
           level: 'info',
-          content: status
+          content: content
         });
       }
     }
@@ -102,7 +106,7 @@ export class TUIAdapter extends EventEmitter {
     }
   }
 
-  streamFile(action: string, fileName: string) {
+  streamFile(action: string, fileName: string, options?: any) {
     this.currentFile = fileName;
     this.filesProcessed++;
     this.send({
@@ -118,6 +122,7 @@ export class TUIAdapter extends EventEmitter {
       tool: action,
       content: fileName
     });
+    // Options like { size: number } are ignored for now
   }
 
   logInfo(title: string, message?: string) {
@@ -136,7 +141,11 @@ export class TUIAdapter extends EventEmitter {
     });
   }
 
-  logError(title: string, message?: string) {
+  logError(title: string, message?: string | any) {
+    const msg = message ? 
+      (typeof message === 'string' ? message : 
+       message instanceof Error ? message.message :
+       JSON.stringify(message)) : title;
     this.send({
       type: 'log',
       level: 'error',
@@ -226,6 +235,125 @@ export class TUIAdapter extends EventEmitter {
 
   resume() {
     // No-op for now
+  }
+
+  // Additional compatibility methods
+  log(level: string, message: string | Error) {
+    const content = typeof message === 'string' ? message : message.toString();
+    this.send({
+      type: 'log',
+      level: level === 'info' ? 'info' : 
+             level === 'warn' || level === 'warning' ? 'warning' :
+             level === 'error' ? 'error' : 
+             level === 'success' ? 'success' : 'info',
+      content: content
+    });
+  }
+
+  stream(message: string): void;
+  stream(icon: string, message: string): void;
+  stream(arg1: string, arg2?: string): void {
+    const content = arg2 ? `${arg1} ${arg2}` : arg1;
+    this.send({
+      type: 'log',
+      level: 'info',
+      content: content
+    });
+  }
+
+  streamAnalysis(title: string, analysis?: string): void {
+    const content = analysis ? `${title}\n${analysis}` : title;
+    this.send({
+      type: 'raw',
+      content: content
+    });
+  }
+
+  debugEvent(event: any) {
+    this.send({
+      type: 'debug',
+      content: typeof event === 'string' ? event : JSON.stringify(event)
+    });
+  }
+
+  updateStatus(status: string, subStatus?: string): void {
+    const content = subStatus ? `${status}: ${subStatus}` : status;
+    this.send({
+      type: 'log',
+      level: 'info',
+      content: content
+    });
+  }
+
+  setPhase(phase: string | number, current?: number | string, total?: number | string): void {
+    // Handle different call patterns
+    if (typeof phase === 'number' && typeof current === 'number' && typeof total === 'string') {
+      // Called as setPhase(1, 7, 'PhaseName')
+      this.phaseIndex = phase;
+      this.totalPhases = current;
+      this.updatePhase(total);
+    } else if (typeof phase === 'string' && typeof current === 'number' && typeof total === 'number') {
+      // Called as setPhase('PhaseName', 1, 7)
+      this.phaseIndex = current;
+      this.totalPhases = total;
+      this.updatePhase(phase);
+    } else if (typeof phase === 'string') {
+      // Called as setPhase('PhaseName')
+      this.updatePhase(phase);
+    }
+  }
+
+  setWorking(working: boolean) {
+    if (working) {
+      this.send({
+        type: 'log',
+        level: 'info',
+        content: 'Working...'
+      });
+    }
+  }
+
+  addDiagnostic(title: string, diagnostic?: string | any, extra?: any): void {
+    let content = title;
+    if (diagnostic) {
+      if (typeof diagnostic === 'string') {
+        content = `${title}: ${diagnostic}`;
+        if (extra) {
+          content += ` - ${JSON.stringify(extra)}`;
+        }
+      } else {
+        content = `${title}: ${JSON.stringify(diagnostic)}`;
+      }
+    }
+    this.send({
+      type: 'log',
+      level: 'warning',
+      content: content
+    });
+  }
+
+  showSummary(summary: any) {
+    this.send({
+      type: 'log',
+      level: 'success',
+      content: JSON.stringify(summary, null, 2)
+    });
+  }
+
+  updateDocumentProgress(current: number, total: number, name?: string): void {
+    this.filesProcessed = current;
+    this.totalFiles = total;
+    if (name) {
+      this.currentFile = name;
+    }
+    this.send({
+      type: 'file',
+      files: {
+        processed: current,
+        total: total,
+        current: name || this.currentFile
+      }
+    });
   }
 }
 

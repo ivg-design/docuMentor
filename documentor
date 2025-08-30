@@ -1,0 +1,71 @@
+#!/bin/bash
+
+# DocuMentor launcher with Go TUI integration
+# This script launches the documentor with the Go TUI for visual progress tracking
+
+# Get the directory of this script
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+TUI_DIR="$SCRIPT_DIR/src/tui"
+TUI_BINARY="$TUI_DIR/documentor-tui"
+
+# Check if TUI binary exists and build if necessary
+if [ ! -f "$TUI_BINARY" ]; then
+  echo "Building Go TUI..."
+  cd "$TUI_DIR"
+  go build -o documentor-tui main.go updateInfoBox.go password_modal_simple.go
+  if [ $? -ne 0 ]; then
+    echo "Failed to build TUI. Running without TUI..."
+    cd "$SCRIPT_DIR"
+    npm run start -- "$@"
+    exit $?
+  fi
+  cd "$SCRIPT_DIR"
+fi
+
+# Create a named pipe for communication
+PIPE=$(mktemp -u)
+mkfifo "$PIPE"
+
+# Cleanup function
+cleanup() {
+  rm -f "$PIPE"
+  exit $1
+}
+
+# Set up trap for cleanup
+trap 'cleanup $?' EXIT INT TERM
+
+# Start the TUI with the pipe as input
+"$TUI_BINARY" < "$PIPE" &
+TUI_PID=$!
+
+# Run documentor and pipe output to TUI
+(
+  # Run the TypeScript documentor
+  npm run start -- "$@" > "$PIPE" 2>&1
+  RESULT=$?
+  
+  # Send completion message
+  if [ $RESULT -eq 0 ]; then
+    echo '{"type":"log","level":"success","content":"Documentation generation completed successfully"}' > "$PIPE"
+  else
+    echo '{"type":"log","level":"error","content":"Documentation generation failed"}' > "$PIPE"
+  fi
+  
+  # Give TUI time to display the final message
+  sleep 2
+  
+  # Send quit signal
+  echo '{"type":"quit"}' > "$PIPE"
+) &
+DOCUMENTOR_PID=$!
+
+# Wait for the documentor to complete
+wait $DOCUMENTOR_PID
+DOCUMENTOR_EXIT=$?
+
+# Wait for TUI to exit
+wait $TUI_PID
+
+# Exit with documentor's exit code
+exit $DOCUMENTOR_EXIT
