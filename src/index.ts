@@ -84,6 +84,37 @@ program
     }
   });
 
+// Self-document command
+program
+  .command('self-document')
+  .description('Generate documentation for DocuMentor itself')
+  .option('-v, --verbose', 'Enable verbose output')
+  .action(async (options) => {
+    try {
+      const config = new ConfigManager();
+      const configData = await config.loadConfig();
+      
+      // Use the directory where documentor is installed
+      const selfPath = path.resolve(__dirname, '..');
+      
+      const generator = new FullMontyGeneratorV3(options.verbose || false);
+      
+      const report = await generator.generate(selfPath);
+      
+      // Save report
+      const reportPath = path.join(os.homedir(), '.documentor', 'reports', `self-document-${Date.now()}.json`);
+      await fs.mkdir(path.dirname(reportPath), { recursive: true });
+      await fs.writeFile(reportPath, JSON.stringify(report, null, 2));
+      
+      console.log(`\n[INFO] Self-documentation complete!`);
+      console.log(`[INFO] Report saved to: ${reportPath}`);
+      
+    } catch (error) {
+      console.error('[ERROR] Self-documentation failed:', error);
+      process.exit(1);
+    }
+  });
+
 // Full Monty command
 program
   .command('full-monty')

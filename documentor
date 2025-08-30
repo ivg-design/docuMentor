@@ -8,6 +8,26 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TUI_DIR="$SCRIPT_DIR/src/tui"
 TUI_BINARY="$TUI_DIR/documentor-tui"
 
+# Parse command to determine if we should use TUI
+USE_TUI=true
+for arg in "$@"; do
+  case "$arg" in
+    --no-tui)
+      USE_TUI=false
+      ;;
+    config|--help|-h|--version|-v)
+      # Don't use TUI for these commands
+      USE_TUI=false
+      ;;
+  esac
+done
+
+# If not using TUI, run directly
+if [ "$USE_TUI" = false ]; then
+  npm run start -- "$@"
+  exit $?
+fi
+
 # Check if TUI binary exists and build if necessary
 if [ ! -f "$TUI_BINARY" ]; then
   echo "Building Go TUI..."
@@ -29,6 +49,7 @@ mkfifo "$PIPE"
 # Cleanup function
 cleanup() {
   rm -f "$PIPE"
+  kill $TUI_PID 2>/dev/null
   exit $1
 }
 
@@ -55,8 +76,8 @@ TUI_PID=$!
   # Give TUI time to display the final message
   sleep 2
   
-  # Send quit signal
-  echo '{"type":"quit"}' > "$PIPE"
+  # Send quit signal (TUI will exit gracefully)
+  kill $TUI_PID 2>/dev/null
 ) &
 DOCUMENTOR_PID=$!
 
@@ -65,7 +86,7 @@ wait $DOCUMENTOR_PID
 DOCUMENTOR_EXIT=$?
 
 # Wait for TUI to exit
-wait $TUI_PID
+wait $TUI_PID 2>/dev/null
 
 # Exit with documentor's exit code
 exit $DOCUMENTOR_EXIT
