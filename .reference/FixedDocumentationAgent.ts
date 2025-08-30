@@ -1,0 +1,414 @@
+import * as path from 'path';
+import * as fs from 'fs/promises';
+import { ProjectAnalyzer } from './ProjectAnalyzer';
+import { ObsidianFormatter } from './ObsidianFormatter';
+import { CodeVerifier } from './CodeVerifier';
+import { SmartTagManager } from './SmartTagManager';
+import { streamingClaudeQuery } from './UnifiedClaudeClient';
+import { ContentCleaner } from './ContentCleaner';
+import { TUIAdapter } from './TUIAdapter';
+import { ImprovedFrontmatterGenerator } from './ImprovedFrontmatterGenerator';
+import { PhaseManager, PhaseType, OperationType, initializePhaseManager } from './PhaseManager';
+
+export interface DocConfig {
+  targetPath: string;
+  outputPath?: string;
+  excludePaths?: string[];
+  verifyCode?: boolean;
+  includeTests?: boolean;
+  updateExisting?: boolean;
+}
+
+export class FixedDocumentationAgent {
+  private config: DocConfig;
+  private projectAnalyzer: ProjectAnalyzer;
+  private obsidianFormatter: ObsidianFormatter;
+  private codeVerifier: CodeVerifier;
+  private tagManager: SmartTagManager;
+  private frontmatterGen: ImprovedFrontmatterGenerator;
+  private ui: TUIAdapter;
+  private phaseManager: PhaseManager;
+  private obsidianVaultPath: string;
+  private documentsGenerated: number = 0;
+  private totalDocuments: number = 0;
+  private projectPath: string;
+
+  constructor(config: DocConfig) {
+    this.projectPath = config.targetPath;
+    // CRITICAL: Always ensure we save to obsidian_vault/docs/, NEVER accept other paths
+    this.obsidianVaultPath = path.join(process.env.HOME!, 'obsidian_vault/docs');
+    
+    this.config = {
+      ...config,
+      outputPath: this.obsidianVaultPath, // ALWAYS output to obsidian_vault/docs/
+      excludePaths: [
+        ...(config.excludePaths || []),
+        path.join(process.env.HOME!, 'github/docuMentor'),
+        path.join(process.env.HOME!, 'obsidian_vault'),
+        '**/node_modules/**',
+        '**/.git/**',
+        '**/dist/**',
+        '**/build/**'
+      ],
+      verifyCode: config.verifyCode !== false
+    };
+
+    const projectName = path.basename(this.config.targetPath);
+    this.projectAnalyzer = new ProjectAnalyzer();
+    this.obsidianFormatter = new ObsidianFormatter();
+    this.codeVerifier = new CodeVerifier();
+    this.tagManager = new SmartTagManager(this.obsidianVaultPath, projectName);
+    this.frontmatterGen = new ImprovedFrontmatterGenerator(this.config.targetPath);
+    this.ui = new TUIAdapter();
+    this.phaseManager = initializePhaseManager(this.ui, 'generate');
+  }
+
+  async generateDocumentation(): Promise<void> {
+    this.ui.start(path.join(this.config.targetPath, '.documentor.lock'));
+    this.ui.log('info', '[START] DocuMentor starting analysis...');
+    this.ui.log('info', `[TARGET] ${this.config.targetPath}`);
+    this.ui.log('info', `[OUTPUT] ${this.config.outputPath}`);
+
+    try {
+      // Phase 1: Initialization
+      this.phaseManager.startPhase(PhaseType.INITIALIZATION);
+      this.phaseManager.startTask('load-config');
+      this.phaseManager.reportOperation(OperationType.READ, 'config.json');
+      this.phaseManager.completeTask('load-config');
+      
+      // Phase 2: Validation
+      this.phaseManager.startPhase(PhaseType.VALIDATION);
+      this.phaseManager.startTask('safety-check');
+      this.phaseManager.reportOperation(OperationType.VALIDATE, this.config.targetPath);
+      // Validation logic here
+      this.phaseManager.completeTask('safety-check');
+      
+      // Phase 3: Analysis - NO HEURISTICS, use DocumentorAgent
+      this.phaseManager.startPhase(PhaseType.ANALYSIS);
+      this.phaseManager.startTask('scan-structure');
+      const projectAnalysis = await this.analyzeProjectProperly();
+      this.phaseManager.completeTask('scan-structure');
+      
+      // Phase 4: Preparation - Tag Loading & Consolidation
+      this.phaseManager.startPhase(PhaseType.PREPARATION);
+      this.phaseManager.startTask('load-tags');
+      await this.consolidateTags(projectAnalysis);
+      this.phaseManager.completeTask('load-tags');
+      
+      // Phase 5: Documentation Generation
+      this.phaseManager.startPhase(PhaseType.GENERATION);
+      const documentation = await this.generateDocsForProject(projectAnalysis);
+      
+      // Phase 6: Enhancement (includes verification)
+      this.phaseManager.startPhase(PhaseType.ENHANCEMENT);
+      if (this.config.verifyCode) {
+        this.phaseManager.startTask('verify-code');
+        await this.verifyCodeFunctionality(projectAnalysis);
+        this.phaseManager.completeTask('verify-code');
+      }
+      
+      // Phase 7: Formatting & Frontmatter
+      this.phaseManager.startPhase(PhaseType.FORMATTING);
+      this.phaseManager.startTask('apply-frontmatter');
+      const formattedDocs = await this.formatWithFrontmatter(documentation, projectAnalysis);
+      this.phaseManager.completeTask('apply-frontmatter');
+      
+      // Phase 8: Integration
+      this.phaseManager.startPhase(PhaseType.INTEGRATION);
+      this.phaseManager.startTask('build-indexes');
+      // Build indexes logic here
+      this.phaseManager.completeTask('build-indexes');
+      
+      // Phase 9: Finalization - Save to Obsidian Vault
+      this.phaseManager.startPhase(PhaseType.FINALIZATION);
+      this.phaseManager.startTask('save-docs');
+      await this.saveToObsidianVault(formattedDocs, projectAnalysis);
+      this.phaseManager.completeTask('save-docs');
+      
+      this.phaseManager.completePhase(PhaseType.FINALIZATION);
+      this.ui.log('success', '[SUCCESS] Documentation generation complete!');
+      this.ui.log('info', `[INFO] View in Obsidian: ${this.config.outputPath}`);
+      
+    } catch (error) {
+      this.ui.logError('[ERROR] Error generating documentation:', error);
+      this.ui.setWorking(false);
+      throw error;
+    } finally {
+      this.ui.stop();
+    }
+  }
+
+  /**
+   * Analyze project WITHOUT heuristics - let DocumentorAgent decide everything
+   */
+  private async analyzeProjectProperly(): Promise<any> {
+    this.ui.log('info', '[ANALYZE] Analyzing project structure...');
+    this.ui.addDiagnostic('Agent', 'Starting project analysis');
+    
+    // Use DocumentorAgent to determine EVERYTHING
+    const agentAnalysis = await streamingClaudeQuery(
+      `Analyze the project at ${this.config.targetPath} and determine:
+      
+      1. Project Structure:
+         - Is this a single project or multi-project repository?
+         - If multi-project, list all sub-projects with their paths
+         - Identify the type: monorepo, multi-tool, library, application, scripts collection
+      
+      2. For each project/sub-project identify:
+         - Name and purpose
+         - Main entry points
+         - Dependencies
+         - Documentation needs
+      
+      3. Documentation Structure Required:
+         - If single project: generate comprehensive docs in one folder
+         - If multi-project: create folder hierarchy with:
+           * Root folder for the repository
+           * Subfolders for each project
+           * Overview document for the repository
+           * Individual docs for each sub-project
+      
+      4. Return as structured JSON with:
+         {
+           "type": "single|multi",
+           "projectType": "monorepo|library|application|multi-tool|scripts",
+           "projects": [
+             {
+               "name": "project-name",
+               "path": "relative/path",
+               "type": "tool|library|app|script",
+               "description": "what it does",
+               "entryPoints": ["main files"],
+               "needsOwnFolder": true/false
+             }
+           ],
+           "documentationStructure": {
+             "rootFolder": "name-for-obsidian-folder",
+             "needsOverview": true/false,
+             "subFolders": ["list of subfolder names"]
+           }
+         }
+      
+      IMPORTANT: Do NOT use heuristics. Actually examine the code structure.
+      `,
+      this.ui,
+      'project-analysis',
+      ['Read', 'Grep', 'Glob', 'LS'],
+      this.config.targetPath
+    );
+    
+    const analysis = JSON.parse(ContentCleaner.cleanContent(agentAnalysis));
+    
+    this.ui.log('info', `[TYPE] ${analysis.projectType}`);
+    this.ui.log('info', `[STRUCTURE] ${analysis.type} with ${analysis.projects.length} project(s)`);
+    
+    // Count total documents needed
+    this.totalDocuments = analysis.projects.length;
+    if (analysis.documentationStructure.needsOverview) {
+      this.totalDocuments++;
+    }
+    this.ui.updateDocumentProgress(0, this.totalDocuments);
+    
+    return analysis;
+  }
+
+  /**
+   * Tag consolidation step - REQUIRED
+   */
+  private async consolidateTags(analysis: any): Promise<void> {
+    this.ui.log('info', '[TAGS] Consolidating project tags...');
+    this.ui.addDiagnostic('Tag', 'Loading existing tags from vault');
+    
+    // Load existing tags from vault
+    await this.tagManager.loadExistingTags();
+    
+    // Get project-specific tags from the registry
+    const stats = this.tagManager.getStatistics();
+    const projectTags = stats.topTags || [];
+    
+    // Consolidate with analysis
+    const consolidatedTags = await streamingClaudeQuery(
+      `Consolidate tags for project documentation:
+      
+      Project: ${analysis.projectType}
+      Existing vault tags: ${JSON.stringify(projectTags)}
+      
+      Rules:
+      1. Reuse existing tags where appropriate
+      2. Create hierarchical tag structure
+      3. Maximum 10 tags per document
+      4. Include project type, language, framework tags
+      5. Add status tags: #documented, #verified
+      
+      Return as JSON array of tags to use.
+      `,
+      this.ui,
+      'tag-consolidation'
+    );
+    
+    const tags = JSON.parse(ContentCleaner.cleanContent(consolidatedTags));
+    this.ui.log('info', `[TAGS] Using ${tags.length} consolidated tags`);
+    this.ui.addDiagnostic('Tag', 'Tags consolidated', tags);
+  }
+
+  private async verifyCodeFunctionality(analysis: any): Promise<void> {
+    this.ui.log('info', '[VERIFY] Verifying code functionality...');
+    await this.codeVerifier.verifyProject(this.config.targetPath, analysis);
+  }
+
+  private async generateDocsForProject(analysis: any): Promise<any> {
+    this.ui.log('info', '[GENERATE] Generating documentation...');
+    const docs: any = {};
+    
+    // Generate overview if needed
+    if (analysis.documentationStructure.needsOverview) {
+      this.phaseManager.startTask('gen-overview');
+      this.phaseManager.reportDocumentOperation('creating', 'README.md', 0);
+      docs.overview = await this.generateOverviewDoc(analysis);
+      this.documentsGenerated++;
+      this.ui.updateDocumentProgress(this.documentsGenerated, this.totalDocuments, 'README.md');
+      this.phaseManager.reportDocumentOperation('writing', 'README.md', 100);
+      this.phaseManager.completeTask('gen-overview');
+    }
+    
+    // Generate docs for each project
+    this.phaseManager.startTask('gen-components');
+    for (const project of analysis.projects) {
+      const docName = `${project.name}.md`;
+      this.phaseManager.reportDocumentOperation('creating', docName, 0);
+      
+      const projectDoc = await this.generateProjectDoc(project, analysis);
+      docs[project.name] = projectDoc;
+      
+      this.phaseManager.reportDocumentOperation('writing', docName, 100);
+      this.documentsGenerated++;
+      this.ui.updateDocumentProgress(this.documentsGenerated, this.totalDocuments, docName);
+    }
+    this.phaseManager.completeTask('gen-components');
+    
+    return docs;
+  }
+
+  private async generateOverviewDoc(analysis: any): Promise<string> {
+    const doc = await streamingClaudeQuery(
+      `Generate a comprehensive overview document for this repository:
+      ${JSON.stringify(analysis)}
+      
+      Include:
+      - Repository purpose and description
+      - Project structure
+      - List of all sub-projects/tools
+      - How they relate to each other
+      - Installation instructions
+      - Common usage patterns
+      
+      Format as clean Markdown without any AI commentary.
+      `,
+      this.ui,
+      'overview-generation'
+    );
+    
+    return ContentCleaner.cleanContent(doc);
+  }
+
+  private async generateProjectDoc(project: any, analysis: any): Promise<string> {
+    const doc = await streamingClaudeQuery(
+      `Generate comprehensive documentation for:
+      Project: ${project.name}
+      Path: ${project.path}
+      Type: ${project.type}
+      
+      Include:
+      - Purpose and functionality
+      - Installation/setup
+      - Usage examples
+      - API documentation (if applicable)
+      - Configuration options
+      - Dependencies
+      
+      Format as clean Markdown without any AI commentary.
+      `,
+      this.ui,
+      'project-doc-generation'
+    );
+    
+    return ContentCleaner.cleanContent(doc);
+  }
+
+  /**
+   * Format with REQUIRED frontmatter
+   */
+  private async formatWithFrontmatter(docs: any, analysis: any): Promise<any> {
+    this.ui.log('info', '[FORMAT] Adding frontmatter to all documents...');
+    const formatted: any = {};
+    
+    for (const [key, content] of Object.entries(docs)) {
+      if (typeof content === 'string') {
+        // Generate frontmatter for this document
+        const frontmatter = await this.frontmatterGen.generateFrontmatter({
+          title: key === 'overview' ? `${path.basename(this.config.targetPath)} Overview` : key,
+          type: key === 'overview' ? 'overview' : 'documentation',
+          project: path.basename(this.config.targetPath),
+          tags: this.tagManager.getStatistics().topTags || [],
+          relatedFiles: analysis.projects.map((p: any) => p.name)
+        });
+        
+        // Add frontmatter to document
+        formatted[key] = frontmatter + '\n\n' + content;
+        
+        this.ui.addDiagnostic('Doc', `Added frontmatter to ${key}`);
+      } else {
+        formatted[key] = content;
+      }
+    }
+    
+    return formatted;
+  }
+
+  /**
+   * Save to Obsidian Vault with proper structure
+   */
+  private async saveToObsidianVault(docs: any, analysis: any): Promise<void> {
+    this.ui.log('info', '[SAVE] Saving to Obsidian vault...');
+    
+    const projectName = analysis.documentationStructure.rootFolder || 
+                       path.basename(this.config.targetPath);
+    const projectDocsPath = path.join(this.config.outputPath!, projectName);
+    
+    // Create root folder
+    await fs.mkdir(projectDocsPath, { recursive: true });
+    this.ui.addDiagnostic('File', `Created folder: ${projectDocsPath}`);
+    
+    // Save overview if exists
+    if (docs.overview) {
+      const overviewPath = path.join(projectDocsPath, 'README.md');
+      await fs.writeFile(overviewPath, docs.overview);
+      this.ui.log('info', `[FILE] Created: README.md`);
+    }
+    
+    // Save project docs
+    for (const project of analysis.projects) {
+      if (docs[project.name]) {
+        let docPath: string;
+        
+        if (project.needsOwnFolder && analysis.type === 'multi') {
+          // Create subfolder for this project
+          const subFolder = path.join(projectDocsPath, project.name);
+          await fs.mkdir(subFolder, { recursive: true });
+          docPath = path.join(subFolder, 'README.md');
+        } else {
+          // Save in root folder with project name
+          docPath = path.join(projectDocsPath, `${project.name}.md`);
+        }
+        
+        await fs.writeFile(docPath, docs[project.name]);
+        this.ui.log('info', `[FILE] Created: ${path.relative(projectDocsPath, docPath)}`);
+      }
+    }
+    
+    // Save tag registry
+    await this.tagManager.saveRegistry();
+    
+    this.ui.log('success', `[COMPLETE] Documentation saved to Obsidian vault`);
+  }
+}

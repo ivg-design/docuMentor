@@ -1,18 +1,27 @@
 {
   "name": "documentor",
-  "version": "2.0.0",
-  "description": "DocuMentor - Comprehensive documentation generator with Obsidian integration, safety validation, and GitHub monitoring",
+  "version": "3.1.0",
+  "description": "DocuMentor v3.1 - Intelligent Documentation Generator with 9-phase AI-powered analysis, Obsidian integration, security validation, and GitHub monitoring",
   "main": "dist/index.js",
   "bin": {
-    "documentor": "./dist/index.js"
+    "documentor": "./dist/index.js",
+    "doc": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc",
+    "build:binary": "npm run build && npm run pkg",
+    "pkg": "pkg dist/index.js --targets node18-linux-x64,node18-macos-x64,node18-win-x64 --output bin/documentor",
+    "pkg:linux": "pkg dist/index.js --targets node18-linux-x64 --output bin/documentor-linux",
+    "pkg:macos": "pkg dist/index.js --targets node18-macos-x64 --output bin/documentor-macos",
+    "pkg:win": "pkg dist/index.js --targets node18-win-x64 --output bin/documentor-win.exe",
     "dev": "ts-node src/index.ts",
     "start": "node dist/index.js",
-    "clean": "rm -rf dist",
+    "clean": "rm -rf dist/ bin/",
     "prepare": "npm run build",
-    "test": "echo \"No tests yet\""
+    "test": "echo \"No tests yet\"",
+    "lint": "eslint 'src/**/*.ts'",
+    "lint:fix": "eslint 'src/**/*.ts' --fix",
+    "lint:watch": "esw --watch --changed --color 'src/**/*.ts'"
   },
   "keywords": [
     "documentation",
@@ -21,21 +30,48 @@
     "markdown",
     "code-analysis",
     "claude",
-    "ai"
+    "ai",
+    "typescript",
+    "javascript",
+    "python",
+    "go",
+    "rust",
+    "java"
   ],
   "author": "",
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/claude-code": "^1.0.0",
     "chalk": "^5.6.0",
+    "chokidar": "^3.5.3",
     "commander": "^11.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.41.0",
+    "@typescript-eslint/parser": "^8.41.0",
+    "eslint": "^8.57.0",
+    "eslint-watch": "^8.0.0",
+    "nodemon": "^3.1.10",
+    "pkg": "^5.8.1",
     "ts-node": "^10.9.0",
     "typescript": "^5.0.0"
   },
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=18.0.0"
+  },
+  "pkg": {
+    "scripts": "dist/**/*.js",
+    "assets": [
+      "src/tui/**/*",
+      "templates/**/*",
+      ".documentor/config.default.json"
+    ],
+    "outputPath": "bin",
+    "targets": [
+      "node18-linux-x64",
+      "node18-macos-x64",
+      "node18-win-x64"
+    ]
   }
 }

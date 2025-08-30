@@ -583,7 +583,7 @@ func (t *TUI) updateInfoBox_old() {
 		"[cyan] Phase:  [white] %s\n"+
 		"[cyan] Files:  [white] %s\n"+
 		"[cyan] Updated:[white] %s",
-		projectDisplay, t.pid,
+		projectDisplay, t.lockInfo.PID,
 		lockDisplay, lockDetail,
 		phaseDisplay,
 		filesDisplay,
