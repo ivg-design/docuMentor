@@ -69,14 +69,19 @@ export class TUIAdapter extends EventEmitter {
         this.send({
           type: 'lockInfo',
           lockInfo: {
-            status: 'locked',
-            resuming: false,
+            status: lockData.status === 'running' ? 'locked' : lockData.status,
+            resuming: lockData.status === 'interrupted',
             timestamp: lockData.lastUpdate,
             pid: lockData.pid,
             createdAt: lockData.startTime,
             updatedAt: lockData.lastUpdate
           }
         });
+        
+        // Also update the current phase from lock file
+        if (lockData.currentPhase) {
+          this.currentPhase = lockData.currentPhase;
+        }
       }
     } catch (error) {
       // Ignore errors reading lock file
@@ -101,15 +106,21 @@ export class TUIAdapter extends EventEmitter {
       type: 'project',
       projectPath: projectName
     });
+    // Also send project name in a log for better visibility
+    this.send({
+      type: 'log',
+      level: 'info',
+      content: `Project: ${projectName}`
+    });
   }
 
   updatePhase(phaseName: string, subPhase?: string) {
     this.currentPhase = phaseName;
-    this.phaseIndex++;
+    // Don't auto-increment phase index here - let setPhase handle it
     this.send({
       type: 'phase',
       phase: {
-        current: this.phaseIndex,
+        current: this.phaseIndex || 1,
         total: this.totalPhases,
         name: phaseName,
         subPhase: subPhase

@@ -84,7 +84,8 @@ export async function streamingClaudeQuery(
           case 'system':
             if (event.subtype === 'init') {
               display.streamAnalysis('Claude', 'Initializing...');
-              display.updatePhase('Claude Initialization');
+              // Don't override the phase - just log the initialization
+              display.logInfo('Claude', 'Initializing...');
             }
             break;
             

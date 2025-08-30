@@ -553,9 +553,9 @@ export class PhaseManager extends EventEmitter {
     phase.startTime = new Date();
     this.currentPhase = phase;
 
-    // Report to UI - send phase update
-    this.ui.updatePhase(phase.name, `Starting ${phase.description}`);
+    // Report to UI - send phase update with correct index
     this.ui.setPhase(phase.name, phase.order, this.totalPhases);
+    this.ui.updatePhase(phase.name, phase.description);
     this.updateOverallProgress();
     
     this.emit('phase:start', phase);

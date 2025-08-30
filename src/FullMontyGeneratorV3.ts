@@ -52,11 +52,12 @@ export class FullMontyGeneratorV3 {
       const startTime = Date.now();
       const projectName = path.basename(targetPath);
       
-      // Start the UI
-      this.ui.start();
+      // Start the UI with lock file path
+      const lockFilePath = path.join(targetPath, '.documentor.lock');
+      this.ui.start(lockFilePath);
       
-      // Display epic title
-      this.ui.displayTitle(projectName);
+      // Display epic title with project path
+      this.ui.displayTitle(targetPath);
       
       // Initialize report
       this.report = {
