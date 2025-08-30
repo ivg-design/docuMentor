@@ -1,0 +1,23 @@
+# Binaries
+documentor-tui
+tui_test
+*.exe
+
+# Logs
+documentor_logs_*.txt
+*.log
+
+# Fonts (downloaded separately)
+fonts/*.ttf
+
+# Test output
+test_output/
+*.test
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
