@@ -1,10 +1,10 @@
 {
-  "pid": 58222,
-  "startTime": "8/30/2025, 8:34:56 AM",
-  "lastUpdate": "8/30/2025, 8:45:05 AM",
+  "pid": 71557,
+  "startTime": "8/30/2025, 9:08:22 AM",
+  "lastUpdate": "8/30/2025, 9:08:39 AM",
   "status": "failed",
-  "currentPhase": "tag-initialization",
+  "currentPhase": "validation",
   "completedTasks": [],
-  "progress": 25,
-  "error": "Frontmatter validation failed - all fields must be present!"
+  "progress": 10,
+  "error": "Crashed: write EPIPE at 8/30/2025, 9:08:39 AM"
 }

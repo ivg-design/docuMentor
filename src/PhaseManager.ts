@@ -553,7 +553,8 @@ export class PhaseManager extends EventEmitter {
     phase.startTime = new Date();
     this.currentPhase = phase;
 
-    // Report to UI
+    // Report to UI - send phase update
+    this.ui.updatePhase(phase.name, `Starting ${phase.description}`);
     this.ui.setPhase(phase.name, phase.order, this.totalPhases);
     this.updateOverallProgress();
     
@@ -584,7 +585,8 @@ export class PhaseManager extends EventEmitter {
     task.startTime = new Date();
     this.currentTask = task;
 
-    // Report to UI
+    // Report to UI - create task in UI
+    this.ui.createTask(`${this.currentPhase.id}-${taskId}`, task.name, 100);
     this.ui.updateTask(
       `${this.currentPhase.id}-${taskId}`,
       0,

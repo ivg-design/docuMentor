@@ -332,7 +332,8 @@ export class FullMontyGeneratorV3 {
     this.ui.updatePhase('Single Project Documentation');
     
     const projectName = path.basename(targetPath);
-    const outputPath = path.join(config.obsidianVaultPath, projectName);
+    // IMPORTANT: Always save to obsidian_vault, NEVER in the project directory
+    const outputPath = path.join(config.obsidianVaultPath, 'docs', projectName);
     await fs.mkdir(outputPath, { recursive: true });
     
     // Start Generation Phase

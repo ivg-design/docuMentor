@@ -19,6 +19,8 @@ export class TUIAdapter extends EventEmitter {
   private totalFiles: number = 0;
   private currentFile: string = '';
   private tasks: Map<string, any> = new Map();
+  private lockFilePath: string = '';
+  private lockUpdateInterval: NodeJS.Timeout | null = null;
 
   constructor() {
     super();
@@ -32,6 +34,11 @@ export class TUIAdapter extends EventEmitter {
   start(projectName?: string) {
     if (projectName) {
       this.displayTitle(projectName);
+      // If projectName is a path, it might be the lock file path
+      if (projectName.endsWith('.documentor.lock')) {
+        this.lockFilePath = projectName;
+        this.startLockFileMonitoring();
+      }
     }
     this.send({
       type: 'log',
@@ -40,7 +47,47 @@ export class TUIAdapter extends EventEmitter {
     });
   }
 
+  private startLockFileMonitoring() {
+    if (!this.lockFilePath) return;
+    
+    // Read lock file immediately
+    this.readAndSendLockInfo();
+    
+    // Update every second
+    this.lockUpdateInterval = setInterval(() => {
+      this.readAndSendLockInfo();
+    }, 1000);
+  }
+
+  private readAndSendLockInfo() {
+    try {
+      const fs = require('fs');
+      if (fs.existsSync(this.lockFilePath)) {
+        const content = fs.readFileSync(this.lockFilePath, 'utf-8');
+        const lockData = JSON.parse(content);
+        
+        this.send({
+          type: 'lockInfo',
+          lockInfo: {
+            status: 'locked',
+            resuming: false,
+            timestamp: lockData.lastUpdate,
+            pid: lockData.pid,
+            createdAt: lockData.startTime,
+            updatedAt: lockData.lastUpdate
+          }
+        });
+      }
+    } catch (error) {
+      // Ignore errors reading lock file
+    }
+  }
+
   stop() {
+    if (this.lockUpdateInterval) {
+      clearInterval(this.lockUpdateInterval);
+      this.lockUpdateInterval = null;
+    }
     this.send({
       type: 'log',
       level: 'info',
