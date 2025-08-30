@@ -44,10 +44,11 @@ type FileInfo struct {
 }
 
 type LockInfo struct {
-	Status    string    `json:"status"`    // locked, unlocked, stale
+	Status    string    `json:"status"`    // running, interrupted, failed
 	Resuming  bool      `json:"resuming"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
+	Timestamp time.Time `json:"timestamp"` // Also accept timestamp field
 	PID       int       `json:"pid"`
 }
 
@@ -251,10 +252,6 @@ func NewTUI() *TUI {
 				return nil
 			case 'e', 'E':
 				tui.exportLogs()
-				return nil
-			case 'p', 'P':
-				// Test password modal
-				tui.testSimplePasswordModal()
 				return nil
 			}
 		case tcell.KeyPgUp:
@@ -684,6 +681,10 @@ func (t *TUI) handleMessage(msg Message) {
 		}
 		if msg.LockInfo.Status != "" {
 			t.lockInfo = msg.LockInfo
+			// Use Timestamp field if UpdatedAt is zero
+			if t.lockInfo.UpdatedAt.IsZero() && !t.lockInfo.Timestamp.IsZero() {
+				t.lockInfo.UpdatedAt = t.lockInfo.Timestamp
+			}
 			t.updateInfoBox()
 		}
 		
@@ -713,20 +714,6 @@ func (t *TUI) handleMessage(msg Message) {
 		case "memory":
 			if memMB, ok := msg.Data.(float64); ok {
 				t.processStats.MemoryMB = int(memMB)
-			}
-		case "password_request":
-			// Handle password request
-			var req PasswordRequest
-			if jsonData, err := json.Marshal(msg); err == nil {
-				if err := json.Unmarshal(jsonData, &req); err == nil {
-					t.showSimplePasswordModal(req.Prompt, req.Context, func(password string, cancelled bool) {
-						if cancelled {
-							t.addLog("info", "Password cancelled", time.Now().Format("15:04:05"))
-						} else {
-							t.addLog("success", "Password submitted", time.Now().Format("15:04:05"))
-						}
-					})
-				}
 			}
 		default:
 			t.addLog("info", msg.Content, timestamp)

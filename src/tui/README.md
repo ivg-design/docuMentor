@@ -1,11 +1,10 @@
 # DocuMentor TUI (Terminal User Interface)
 
-A professional terminal interface for DocuMentor that provides real-time progress tracking, interactive password input, and comprehensive logging capabilities.
+A professional terminal interface for DocuMentor that provides real-time progress tracking and comprehensive logging capabilities.
 
 ## Features
 
 - **Real-time Progress Tracking**: Monitor documentation generation progress with live updates
-- **Password Modal**: Secure password input for sudo operations and authentication
 - **Multi-view System**: Switch between Normal, Debug, and Raw API views
 - **Fixed Grid Layout**: Information panel with non-shifting elements
 - **Text Wrapping**: Long lines wrap instead of truncating
@@ -21,7 +20,7 @@ cd src/tui
 go mod download
 
 # Build the TUI
-go build -o documentor-tui main.go updateInfoBox.go password_modal_simple.go
+go build -o documentor-tui main.go updateInfoBox.go
 
 # Optional: Install Nerd Fonts for better icons
 ./install_font.sh
@@ -36,8 +35,6 @@ go build -o documentor-tui main.go updateInfoBox.go password_modal_simple.go
 ./documentor-tui
 
 # Run with test data
-./test_modal_only.sh
-./test_simple_password.sh
 ./mock_data.sh
 ```
 
@@ -50,12 +47,9 @@ go build -o documentor-tui main.go updateInfoBox.go password_modal_simple.go
 | `R` | Switch to Raw API view | Always (except modal) |
 | `C` | Clear current view | Always (except modal) |
 | `E` | Export logs | Always (except modal) |
-| `P` | Test password modal | Always (except modal) |
-| `Q` | Quit application | Always (except modal) |
-| `Tab` | Switch focus between panels | Always (except modal) |
+| `Q` | Quit application | Always |
+| `Tab` | Switch focus between panels | Always |
 | `PgUp/PgDn` | Scroll current view | Always |
-| `Enter` | Submit password | Password modal only |
-| `Escape` | Cancel password modal | Password modal only |
 | `Ctrl+C` | Force quit | Always |
 
 ## Message Protocol (JSON)
@@ -155,27 +149,7 @@ The TUI accepts JSON messages via stdin. Each message must be a single line of v
 }
 ```
 
-#### 10. Password Request
-```json
-{
-  "type": "password_request",
-  "requestId": "unique-id-123",
-  "prompt": "sudo password required for installation",
-  "context": "Running: sudo apt-get install build-essential"
-}
-```
 
-### Output Message Types (Future Implementation)
-
-#### Password Response
-```json
-{
-  "type": "password_response",
-  "requestId": "unique-id-123",
-  "password": "user_entered_password",
-  "cancelled": false
-}
-```
 
 ## Architecture
 
@@ -193,11 +167,6 @@ The TUI accepts JSON messages via stdin. Each message must be a single line of v
 - **Dynamic Updates**: Real-time state changes
 - **Debug Mode**: Additional process stats when in debug view
 
-#### 3. Password Modal (`password_modal_simple.go`)
-- **Screen Replacement**: Temporarily replaces entire UI
-- **Secure Input**: Password masking with asterisks
-- **Modal State**: Tracks when modal is open to block shortcuts
-- **Clean Restoration**: Returns to previous view on completion
 
 ### Key Patterns
 
@@ -208,11 +177,6 @@ The TUI accepts JSON messages via stdin. Each message must be a single line of v
 4. UI updated via `app.QueueUpdateDraw()`
 5. View refreshed automatically
 
-#### Modal Handling
-1. `modalOpen` flag set to true
-2. Main keyboard shortcuts blocked
-3. Enter/Escape keys passed through to modal
-4. On close, flag cleared and main view restored
 
 #### View Switching
 - Each view (normal/debug/raw) is a separate TextView
@@ -233,17 +197,6 @@ encoder.Encode(Message{
 })
 ```
 
-### 2. Password Hook
-```go
-// Request password from user
-passwordReq := PasswordRequest{
-    Type: "password_request",
-    RequestID: uuid.New().String(),
-    Prompt: "SSH key passphrase required",
-    Context: "Accessing private repository",
-}
-// Send request and wait for response
-```
 
 ### 3. Progress Tracking
 ```go
@@ -263,21 +216,12 @@ phaseUpdate := Message{
 
 ### Test Scripts
 
-1. **test_modal_only.sh**: Minimal test for password modal
-2. **test_simple_password.sh**: Password modal with messages
-3. **mock_data.sh**: Full UI demonstration with all message types
-4. **test_wrapping.sh**: Test text wrapping with long lines
-5. **test_password.sh**: Automated password request testing
+1. **mock_data.sh**: Full UI demonstration with all message types
+2. **test_wrapping.sh**: Test text wrapping with long lines
 
 ### Manual Testing
 
 ```bash
-# Test password modal
-./test_modal_only.sh
-# Press 'P' to trigger modal
-# Enter password and press Enter
-# Or press Escape to cancel
-
 # Test full UI
 ./mock_data.sh
 # Watch all UI elements update
@@ -307,17 +251,12 @@ phaseUpdate := Message{
 
 ## Troubleshooting
 
-### Modal Not Responding
-- Check `modalOpen` flag is properly set/cleared
-- Ensure main input capture passes events when modal open
-- Verify focus is set to input field
 
 ### Text Not Wrapping
 - Confirm `SetWrap(true)` and `SetWordWrap(true)` on TextViews
 - Check terminal width is sufficient
 
 ### Shortcuts Not Working
-- Verify modal is not open (`modalOpen == false`)
 - Check focus is on correct widget
 - Ensure key event not consumed by earlier handler
 

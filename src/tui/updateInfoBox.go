@@ -78,7 +78,7 @@ func (t *TUI) updateInfoBox() {
 	builder.WriteString("[yellow]project:[white] ")
 	builder.WriteString(fmt.Sprintf("%-24s", projectName))
 	builder.WriteString(" [yellow]pid:[white] ")
-	builder.WriteString(fmt.Sprintf("%-8d", t.pid))
+	builder.WriteString(fmt.Sprintf("%-8d", t.lockInfo.PID))
 	builder.WriteString(" [yellow]files:[white] ")
 	builder.WriteString(filesInfo)
 	builder.WriteString("\n")

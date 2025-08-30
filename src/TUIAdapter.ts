@@ -4,6 +4,8 @@
  */
 
 import { EventEmitter } from 'events';
+import * as path from 'path';
+import * as fs from 'fs';
 
 export interface TUIMessage {
   type: string;
@@ -31,13 +33,18 @@ export class TUIAdapter extends EventEmitter {
     console.log(JSON.stringify(message));
   }
 
-  start(projectName?: string) {
-    if (projectName) {
-      this.displayTitle(projectName);
-      // If projectName is a path, it might be the lock file path
-      if (projectName.endsWith('.documentor.lock')) {
-        this.lockFilePath = projectName;
+  start(projectNameOrLockPath?: string) {
+    if (projectNameOrLockPath) {
+      // If it's a lock file path, extract the project path and set up monitoring
+      if (projectNameOrLockPath.endsWith('.documentor.lock')) {
+        this.lockFilePath = projectNameOrLockPath;
+        // Extract project path using proper path operations
+        const projectPath = path.dirname(projectNameOrLockPath);
+        this.displayTitle(projectPath);
         this.startLockFileMonitoring();
+      } else {
+        // It's just a project name/path
+        this.displayTitle(projectNameOrLockPath);
       }
     }
     this.send({
@@ -53,15 +60,14 @@ export class TUIAdapter extends EventEmitter {
     // Read lock file immediately
     this.readAndSendLockInfo();
     
-    // Update every second
+    // Update every 5 seconds to match SimpleLockFile's auto-update interval
     this.lockUpdateInterval = setInterval(() => {
       this.readAndSendLockInfo();
-    }, 1000);
+    }, 5000);
   }
 
   private readAndSendLockInfo() {
     try {
-      const fs = require('fs');
       if (fs.existsSync(this.lockFilePath)) {
         const content = fs.readFileSync(this.lockFilePath, 'utf-8');
         const lockData = JSON.parse(content);
@@ -69,7 +75,7 @@ export class TUIAdapter extends EventEmitter {
         this.send({
           type: 'lockInfo',
           lockInfo: {
-            status: lockData.status === 'running' ? 'locked' : lockData.status,
+            status: lockData.status, // Pass status as-is, don't change 'running' to 'locked'
             resuming: lockData.status === 'interrupted',
             timestamp: lockData.lastUpdate,
             pid: lockData.pid,
@@ -259,19 +265,6 @@ export class TUIAdapter extends EventEmitter {
     });
   }
 
-  requestPassword(prompt: string, context?: string): Promise<string> {
-    const requestId = `pwd-${Date.now()}`;
-    this.send({
-      type: 'password_request',
-      requestId: requestId,
-      prompt: prompt,
-      context: context
-    });
-    
-    // For now, return empty string - will need to implement proper IPC
-    // in the future to receive password response from Go TUI
-    return Promise.resolve('');
-  }
 
   // Compatibility methods for minimal disruption
   addToolCall(tool: string, content: string) {

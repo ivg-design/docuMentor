@@ -37,10 +37,18 @@ export async function streamingClaudeQuery(
       '--dangerously-skip-permissions'  // Allow Claude to access all files
     ];
     
-    // Add allowed tools if specified
+    // Add allowed tools if specified (NEVER include TodoWrite/Task)
     if (tools && tools.length > 0) {
+      // Filter out TodoWrite/Task tool to prevent output pollution
+      const filteredTools = tools.filter(t => t !== 'Task' && t !== 'TodoWrite');
+      if (filteredTools.length > 0) {
+        args.push('--allowedTools');
+        filteredTools.forEach(tool => args.push(tool));
+      }
+    } else {
+      // Default tools (without TodoWrite/Task)
       args.push('--allowedTools');
-      tools.forEach(tool => args.push(tool));
+      ['Read', 'Grep', 'Glob', 'LS', 'Bash', 'Write', 'Edit'].forEach(tool => args.push(tool));
     }
     
     // Spawn claude process with correct working directory
@@ -188,10 +196,7 @@ export async function streamingClaudeQuery(
     claudeProcess.stderr?.on('data', (data) => {
       const output = data.toString();
       
-      // Check for sudo password prompt
-      if (output.includes('Password:') || output.includes('sudo')) {
-        handleSudoPrompt(claudeProcess, ui);
-      } else if (output.includes('error') || output.includes('Error')) {
+      if (output.includes('error') || output.includes('Error')) {
         ui.logError('Claude error', output);
       } else {
         // Log other stderr for debugging
@@ -280,12 +285,8 @@ function handleToolCall(event: any, display: TUIAdapter, timestamp: string, file
       
     case 'run_bash':
     case 'Bash':
-      // Check if sudo command
-      const cmd = args.command || args.bash_command || '';
-      if (cmd.includes('sudo')) {
-        display.log('warning', 'Sudo command detected - may require password');
-      }
-      display.streamFile('[BASH]', cmd.substring(0, 50) || 'command');
+      const bashCmd = args.command || args.bash_command || '';
+      display.streamFile('[BASH]', bashCmd.substring(0, 50) || 'command');
       break;
       
     case 'search_files':
@@ -314,17 +315,6 @@ function handleToolCall(event: any, display: TUIAdapter, timestamp: string, file
   }
 }
 
-/**
- * Handle sudo password prompts with timeout
- */
-function handleSudoPrompt(process: any, display: TUIAdapter) {
-  // Pause display updates
-  display.log('warning', 'Sudo password required for privileged operation');
-  
-  // Skip password prompts in automated mode
-  display.log('warning', 'Skipping sudo password prompt - operation may fail');
-  process.stdin?.write('\n');
-}
 
 /**
  * Check if text is Claude's internal thought

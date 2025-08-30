@@ -79,7 +79,7 @@ npm run build
 # Build Go TUI (optional but recommended)
 cd src/tui
 go mod download
-go build -o documentor-tui main.go updateInfoBox.go password_modal_simple.go
+go build -o documentor-tui main.go updateInfoBox.go
 cd ../..
 
 # Make launcher executable
