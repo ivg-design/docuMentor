@@ -2,7 +2,7 @@ import * as path from 'path';
 import * as fs from 'fs/promises';
 import { StreamingReporter } from './StreamingReporter';
 import { streamingClaudeQuery } from './EnhancedClaudeClientV2';
-import { UltraTerminalUI } from './UltraTerminalUI';
+import { TUIAdapter } from './TUIAdapter';
 
 export interface SubProject {
   name: string;
@@ -23,11 +23,11 @@ export interface ProjectStructure {
 
 export class MultiProjectAnalyzer {
   private streamer: StreamingReporter;
-  private display: UltraTerminalUI;
+  private display: TUIAdapter;
   
-  constructor(streamer: StreamingReporter, display?: UltraTerminalUI) {
+  constructor(streamer: StreamingReporter, display?: TUIAdapter) {
     this.streamer = streamer;
-    this.display = display || new UltraTerminalUI();
+    this.display = display || new TUIAdapter();
   }
   
   /**

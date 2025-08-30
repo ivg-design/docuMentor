@@ -1,6 +1,6 @@
 import * as path from 'path';
 import * as fs from 'fs/promises';
-import { UltraTerminalUI } from './UltraTerminalUI';
+import { TUIAdapter } from './TUIAdapter';
 import { ObsidianLinker } from './ObsidianLinker';
 import { SafetyValidator } from './SafetyValidator';
 import { ConfigManager } from './ConfigManager';
@@ -29,7 +29,7 @@ export interface FullMontyReport {
 
 export class FullMontyGeneratorV3 {
   private config: ConfigManager;
-  private ui: UltraTerminalUI;
+  private ui: TUIAdapter;
   private safety: SafetyValidator;
   private streamer: StreamingReporter;
   private report: FullMontyReport;
@@ -37,7 +37,7 @@ export class FullMontyGeneratorV3 {
   
   constructor(verbose: boolean = false) {
     this.config = new ConfigManager();
-    this.ui = new UltraTerminalUI();
+    this.ui = new TUIAdapter();
     this.safety = new SafetyValidator();
     this.streamer = new StreamingReporter(null as any);
     this.report = null!;

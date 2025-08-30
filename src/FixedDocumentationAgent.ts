@@ -6,7 +6,7 @@ import { CodeVerifier } from './CodeVerifier';
 import { SmartTagManager } from './SmartTagManager';
 import { queryClaudeCode } from './claudeCodeClient';
 import { ContentCleaner } from './ContentCleaner';
-import { UltraTerminalUI } from './UltraTerminalUI';
+import { TUIAdapter } from './TUIAdapter';
 import { ImprovedFrontmatterGenerator } from './ImprovedFrontmatterGenerator';
 
 export interface DocConfig {
@@ -25,7 +25,7 @@ export class FixedDocumentationAgent {
   private codeVerifier: CodeVerifier;
   private tagManager: SmartTagManager;
   private frontmatterGen: ImprovedFrontmatterGenerator;
-  private ui: UltraTerminalUI;
+  private ui: TUIAdapter;
   private obsidianVaultPath: string;
   private documentsGenerated: number = 0;
   private totalDocuments: number = 0;
@@ -54,7 +54,7 @@ export class FixedDocumentationAgent {
     this.codeVerifier = new CodeVerifier();
     this.tagManager = new SmartTagManager(this.obsidianVaultPath, projectName);
     this.frontmatterGen = new ImprovedFrontmatterGenerator(this.config.targetPath);
-    this.ui = new UltraTerminalUI();
+    this.ui = new TUIAdapter();
   }
 
   async generateDocumentation(): Promise<void> {

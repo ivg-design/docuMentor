@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { UltraTerminalUI } from './UltraTerminalUI';
+import { TUIAdapter } from './TUIAdapter';
 
 interface TagDefinition {
   tag: string;
@@ -23,10 +23,10 @@ export class SmartTagManager {
   private vaultPath: string;
   private tagRegistry: Map<string, TagDefinition> = new Map();
   private hierarchy: TagHierarchy;
-  private display: UltraTerminalUI | null;
+  private display: TUIAdapter | null;
   private similarityThreshold: number = 0.8; // 80% similarity
   
-  constructor(vaultPath: string, projectName: string, display?: UltraTerminalUI) {
+  constructor(vaultPath: string, projectName: string, display?: TUIAdapter) {
     this.vaultPath = vaultPath;
     this.display = display || null;
     

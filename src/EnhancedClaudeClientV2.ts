@@ -1,13 +1,13 @@
 import { spawn } from 'child_process';
 import * as readline from 'readline';
-import { UltraTerminalUI } from './UltraTerminalUI';
+import { TUIAdapter } from './TUIAdapter';
 
 /**
  * Streaming Claude query with real JSON event streaming
  */
 export async function streamingClaudeQuery(
   prompt: string,
-  display: UltraTerminalUI,
+  display: TUIAdapter,
   taskId: string,
   tools?: string[],
   projectPath?: string
@@ -217,7 +217,7 @@ export async function streamingClaudeQuery(
 /**
  * Handle tool calls with real-time display
  */
-function handleToolCall(event: any, display: UltraTerminalUI, timestamp: string, fileCount: number) {
+function handleToolCall(event: any, display: TUIAdapter, timestamp: string, fileCount: number) {
   const tool = event.name || event.tool;
   const args = event.input || event.args || {};
   
@@ -279,7 +279,7 @@ function handleToolCall(event: any, display: UltraTerminalUI, timestamp: string,
 /**
  * Handle sudo password prompts with timeout
  */
-function handleSudoPrompt(process: any, display: UltraTerminalUI) {
+function handleSudoPrompt(process: any, display: TUIAdapter) {
   // Pause display updates
   display.log('warning', 'Sudo password required for privileged operation');
   

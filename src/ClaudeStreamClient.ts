@@ -1,6 +1,6 @@
 import { spawn, ChildProcess } from 'child_process';
 import * as readline from 'readline';
-import { UltraTerminalUI } from './UltraTerminalUI';
+import { TUIAdapter } from './TUIAdapter';
 
 export interface ClaudeEvent {
   type: 'tool_use' | 'tool_result' | 'thinking' | 'content' | 'error' | 'complete';
@@ -19,13 +19,13 @@ export interface ClaudeStreamOptions {
 
 export class ClaudeStreamClient {
   private process: ChildProcess | null = null;
-  private ui: UltraTerminalUI;
+  private ui: TUIAdapter;
   private currentTaskId: string = '';
   private filesProcessed: number = 0;
   private totalFiles: number = 0;
   private startTime: Date;
   
-  constructor(ui: UltraTerminalUI) {
+  constructor(ui: TUIAdapter) {
     this.ui = ui;
     this.startTime = new Date();
   }
@@ -278,7 +278,7 @@ export class ClaudeStreamClient {
  */
 export async function enhancedStreamingQuery(
   prompt: string,
-  ui: UltraTerminalUI,
+  ui: TUIAdapter,
   taskId: string,
   tools?: string[]
 ): Promise<string> {
