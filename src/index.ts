@@ -1,93 +1,62 @@
-// DocuMentor V3.1 - Main Entry Point
-// Clean, simple, direct implementation
-// NO dependency injection, NO event buses, NO abstractions
+#!/usr/bin/env node
 
-import { DocumentEngine } from './core/DocumentEngine.js'
-import { loadConfig } from './core/Config.js'
-import { Logger } from './core/Logger'
-import type { Config } from './types/index.js'
+// DocuMentor V3.1 - CLI Entry Point
+// Production-ready documentation generator with Claude integration
 
-// ============================================================================
-// Main Entry Point
-// ============================================================================
+import { program } from 'commander'
+import { logger } from './cli/display'
+import { configCommand } from './cli/commands/config'
+import { generateCommand } from './cli/commands/generate'
+import { watchCommand } from './cli/commands/watch'
+import { githubWatchCommand } from './cli/commands/github-watch'
+import { selfDocumentCommand } from './cli/commands/self-document'
+import { analyzeCommand } from './cli/commands/analyze'
+import { verifyCommand } from './cli/commands/verify'
 
-export async function main(projectPath: string, overrides: Partial<Config> = {}): Promise<void> {
-  try {
-    // Load configuration
-    const config = await loadConfig(projectPath, overrides)
+// Set up the main program
+program
+  .name('documentor')
+  .description('DocuMentor - AI-powered documentation generator with Obsidian integration')
+  .version('3.1.0')
+  .option('-v, --verbose', 'Enable verbose output')
+  .option('-q, --quiet', 'Suppress all output except errors')
 
-    // Create and run DocumentEngine
-    const engine = new DocumentEngine(config)
-    await engine.generate(projectPath)
+// Add commands
+program.addCommand(configCommand)
+program.addCommand(generateCommand)
+program.addCommand(watchCommand)
+program.addCommand(githubWatchCommand)
+program.addCommand(selfDocumentCommand)
+program.addCommand(analyzeCommand)
+program.addCommand(verifyCommand)
 
-  } catch (error) {
-    Logger.error(`Documentation generation failed: ${(error as Error).message}`)
-    process.exit(1)
+// Handle verbose/quiet flags globally
+program.hook('preAction', (thisCommand) => {
+  const options = thisCommand.opts()
+  if (options.verbose) {
+    process.env.DOCUMENTOR_VERBOSE = 'true'
+    // TUI handles display modes
   }
+  if (options.quiet) {
+    process.env.DOCUMENTOR_QUIET = 'true'
+    // TUI handles display modes
+  }
+})
+
+// Error handling
+program.exitOverride()
+
+try {
+  program.parse(process.argv)
+} catch (error: any) {
+  if (error.code === 'commander.help') {
+    process.exit(0)
+  }
+  logger.error(`Error: ${error.message}`)
+  process.exit(1)
 }
 
-// ============================================================================
-// CLI Entry Point (when run directly)
-// ============================================================================
-
-async function runCLI(): Promise<void> {
-  const args = process.argv.slice(2)
-
-  if (args.length === 0) {
-    Logger.error('Usage: documentor <project-path>')
-    process.exit(1)
-  }
-
-  const projectPath = args[0]
-
-  // Parse basic CLI flags
-  const overrides: Partial<Config> = {}
-
-  // --output flag
-  const outputIndex = args.indexOf('--output')
-  if (outputIndex !== -1 && args[outputIndex + 1]) {
-    overrides.output = {
-      path: args[outputIndex + 1],
-      format: 'obsidian',
-      features: {
-        frontmatter: true,
-        backlinks: true,
-        tags: { optimize: true, hierarchy: true, minPerDoc: 3 },
-        moc: true,
-        dataview: true
-      }
-    }
-  }
-
-  // --no-password flag
-  if (args.includes('--no-password')) {
-    overrides.permissions = {
-      requestPassword: false,
-      skipOnDenial: true,
-      importantPaths: []
-    }
-  }
-
-  await main(projectPath, overrides)
-}
-
-// ============================================================================
-// Exports
-// ============================================================================
-
-export { DocumentEngine } from './core/DocumentEngine.js'
-export { TUIBridge } from './core/TUIBridge.js'
-export { ConfigLoader, loadConfig } from './core/Config.js'
-export { ProgressTracker } from './core/ProgressTracker.js'
-export * from './types/index.js'
-
-// ============================================================================
-// Run CLI if called directly
-// ============================================================================
-
-if (require.main === module) {
-  runCLI().catch(error => {
-    Logger.error(`Fatal error: ${error}`)
-    process.exit(1)
-  })
+// Show help if no command provided
+if (!process.argv.slice(2).length) {
+  program.outputHelp()
 }

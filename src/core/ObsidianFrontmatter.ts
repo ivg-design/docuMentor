@@ -1,5 +1,6 @@
 import * as path from 'path'
 import { ClaudeClient, FrontmatterEnhancementRequest } from './ClaudeClient'
+import { formatDocumentDate } from '../utils/datetime'
 
 export interface UniversalFrontmatter {
   project: string;
@@ -417,7 +418,7 @@ Keep the core structure intact. Focus on accuracy and usefulness.`
    * Formats timestamp in local time
    */
   private formatTimestamp(date: Date): string {
-    return date.toISOString().replace('Z', '+00:00')
+    return formatDocumentDate(date)
   }
 
   /**

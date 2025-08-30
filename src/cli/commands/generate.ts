@@ -13,6 +13,7 @@ import { SecureFileOps } from '../../core/SecureFileOps'
 import { PasswordBridge } from '../../core/PasswordBridge'
 import { spawn } from 'child_process'
 import { expandPath } from '../../utils/paths'
+import { getTUILauncher, TUILauncher } from '../../core/TUILauncher'
 
 // 9-Phase Documentation Generation Engine
 class DocumentEngine {
@@ -22,6 +23,7 @@ class DocumentEngine {
   private fileWriter: FileWriter
   private lockFilePath: string
   private startTime: number
+  private tui: TUILauncher
 
   constructor(config: DocumentorConfig, projectPath: string) {
     this.config = config
@@ -30,6 +32,7 @@ class DocumentEngine {
     this.fileWriter = new FileWriter(this.outputPath, this.projectPath)
     this.lockFilePath = join(this.projectPath, '.documentor.lock')
     this.startTime = Date.now()
+    this.tui = getTUILauncher()
 
     // Configure logger lock file
     logger.setLockFile(this.lockFilePath)
@@ -39,10 +42,21 @@ class DocumentEngine {
   async execute(options: GenerateOptions): Promise<void> {
     const projectName = basename(this.projectPath)
 
-    logger.showHeader(
-      `Generating Documentation: ${projectName}`,
-      `Output: ${this.outputPath}`
-    )
+    // Try to start the TUI, fall back to logger if it fails
+    const tuiStarted = await this.tui.start()
+    
+    if (tuiStarted) {
+      // TUI is running, send initial messages
+      this.tui.setProject(this.projectPath)
+      this.tui.log('info', `Generating documentation for ${projectName}`)
+      this.tui.log('info', `Output: ${this.outputPath}`)
+    } else {
+      // Fall back to standard logger
+      logger.showHeader(
+        `Generating Documentation: ${projectName}`,
+        `Output: ${this.outputPath}`
+      )
+    }
 
     try {
       // Create lock file
@@ -89,16 +103,26 @@ class DocumentEngine {
   }
 
   private reportPhaseProgress(phase: number, phaseName: string, task: string, progress: number): void {
-    const progressInfo: ProgressInfo = {
-      phase,
-      total: 9,
-      phaseName,
-      task,
-      progress,
-      timestamp: Date.now()
+    // Send to TUI if active
+    if (this.tui.isActive()) {
+      this.tui.updatePhase(phase, 9, phaseName, task)
+      if (progress > 0) {
+        // Update progress as file count (rough estimate)
+        const filesProcessed = Math.floor(progress)
+        this.tui.updateFiles(filesProcessed, 100, task)
+      }
+    } else {
+      // Fall back to logger
+      const progressInfo: ProgressInfo = {
+        phase,
+        total: 9,
+        phaseName,
+        task,
+        progress,
+        timestamp: Date.now()
+      }
+      logger.reportProgress(progressInfo)
     }
-
-    logger.reportProgress(progressInfo)
   }
 
   // Phase 1: Project Analysis & File Discovery

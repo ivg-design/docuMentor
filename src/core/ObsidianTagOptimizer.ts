@@ -1,4 +1,5 @@
 import { ClaudeClient } from './ClaudeClient'
+import { getCurrentTimestamp } from '../utils/datetime'
 
 export interface ProcessedDocument {
   id?: string;
@@ -605,8 +606,8 @@ Provide optimized tags for each document with reasoning.`
     sections.push('title: "Tag Hierarchy"')
     sections.push('type: "reference"')
     sections.push('status: "complete"')
-    sections.push(`created: ${new Date().toISOString()}`)
-    sections.push(`modified: ${new Date().toISOString()}`)
+    sections.push(`created: ${getCurrentTimestamp()}`)
+    sections.push(`modified: ${getCurrentTimestamp()}`)
     sections.push('source_files: []')
     sections.push('related: []')
     sections.push('---')
@@ -645,7 +646,7 @@ Provide optimized tags for each document with reasoning.`
     sections.push('#meta/hierarchy')
     sections.push('')
     sections.push('---')
-    sections.push(`Generated: ${new Date().toISOString().split('T')[0]} by DocuMentor v3.1`)
+    sections.push(`Generated: ${getCurrentTimestamp()} by DocuMentor v3.1`)
 
     return sections.join('\n')
   }

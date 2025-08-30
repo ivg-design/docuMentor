@@ -16,6 +16,7 @@ import { join, dirname, basename, resolve } from 'path'
 import { EventEmitter } from 'events'
 import { promisify } from 'util'
 import { spawn } from 'child_process'
+import { getCurrentTimestamp } from '../utils/datetime'
 
 /**
  * Lock file content structure
@@ -549,7 +550,7 @@ export class LockFileManager extends EventEmitter {
         error: {
           message: error.message,
           stack: error.stack,
-          timestamp: new Date().toISOString()
+          timestamp: getCurrentTimestamp()
         }
       }
     }
@@ -638,7 +639,7 @@ export class LockFileManager extends EventEmitter {
             metadata: {
               ...this.lockInfo.metadata,
               interrupted: {
-                timestamp: new Date().toISOString(),
+                timestamp: getCurrentTimestamp(),
                 reason: 'graceful_shutdown'
               }
             }

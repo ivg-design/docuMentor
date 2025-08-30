@@ -22,7 +22,7 @@ export class ConfigLoader {
       type: 'auto'
     },
     output: {
-      path: '~/obsidian_vault/docs',
+      path: '~/github/obsidian_vault/docs',
       format: 'obsidian',
       features: {
         frontmatter: true,
@@ -42,9 +42,9 @@ export class ConfigLoader {
       importantPaths: ['src', 'lib', 'config', 'docs']
     },
     claude: {
-      model: 'claude-3-opus',
-      maxTokens: 100000,
-      temperature: 0.3
+      model: 'claude-opus-4-1-20250805',  // Claude Opus 4.1
+      maxTokens: 100000,  // Opus 4.1 supports up to 100k tokens
+      temperature: 0.3  // Lower temperature for technical documentation
     },
     phases: [
       'analysis',
@@ -409,7 +409,7 @@ export class ConfigLoader {
         type: 'auto'
       },
       output: {
-        path: '~/obsidian_vault/docs',
+        path: '~/github/obsidian_vault/docs',
         format: 'obsidian',
         features: ConfigLoader.DEFAULT_CONFIG.output.features
       }

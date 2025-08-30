@@ -68,11 +68,11 @@ export class ClaudeClient {
     this.projectPath = options.projectPath || process.cwd()
     
     this.options = {
-      model: options.model || 'claude-3-opus',
+      model: options.model || 'claude-opus-4-1-20250805',  // Claude Opus 4.1
       maxRetries: options.maxRetries || 3,
-      timeout: options.timeout || 120000, // 2 minutes
+      timeout: options.timeout || 300000, // 5 minutes for Opus 4.1
       temperature: options.temperature || 0.3,
-      maxTokens: options.maxTokens || 100000,
+      maxTokens: options.maxTokens || 100000,  // Opus 4.1 supports 100k
       blockedTools: options.blockedTools || ['TodoWrite', 'Task'],
       projectPath: this.projectPath
     }
