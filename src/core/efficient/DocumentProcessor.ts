@@ -3,7 +3,7 @@
  * Main orchestrator for document processing with TUI integration
  */
 
-import { TUIInterface } from '../TUIInterface'
+import { TUIInterfaceV4 } from '../TUIInterfaceV4'
 import { WorkerPool } from './WorkerPool'
 import { FileQueue } from './FileQueue'
 import { DocumentPipeline } from './DocumentPipeline'
@@ -31,7 +31,7 @@ export interface ProcessingStats {
 }
 
 export class DocumentProcessor {
-  private tui: TUIInterface
+  private tui: TUIInterfaceV4
   private workerPool: WorkerPool
   private fileQueue: FileQueue
   private pipeline: DocumentPipeline
@@ -40,18 +40,30 @@ export class DocumentProcessor {
   private isPaused: boolean = false
 
   constructor(private config: ProcessorConfig) {
-    // Initialize TUI
-    this.tui = new TUIInterface({
+    // Initialize TUI with full V4 features
+    this.tui = new TUIInterfaceV4({
       project: config.projectPath,
       output: config.outputPath,
-      enabled: config.enableTUI !== false
+      enabled: config.enableTUI !== false,
+      workers: config.workers || 4,
+      phases: [
+        'Initialization', 'Validation', 'Analysis',
+        'Preparation', 'Generation', 'Enhancement',
+        'Formatting', 'Integration', 'Finalization'
+      ]
     })
 
     // Initialize components
-    this.workerPool = new WorkerPool(config.workers || 4, this.tui)
     this.fileQueue = new FileQueue()
     this.pipeline = new DocumentPipeline(config)
     this.outputManager = new OutputManager(config.outputPath)
+    this.workerPool = new WorkerPool(
+      config.workers || 4,
+      this.tui,
+      this.pipeline,
+      this.fileQueue,
+      this.outputManager
+    )
     
     // Initialize stats
     this.stats = {
@@ -73,8 +85,8 @@ export class DocumentProcessor {
       // Initialize output
       await this.outputManager.initialize()
       
-      // Phase 1: Discovery
-      this.tui.updatePhase(1, 9, 'Discovery')
+      // Phase 1: Discovery (Maps to phases 1-3)
+      this.tui.updatePhase(1, 1, 'Initialization')
       this.tui.log('INFO', 'Starting document processing')
       
       const files = await this.discoverFiles()
@@ -87,17 +99,17 @@ export class DocumentProcessor {
         return this.stats
       }
       
-      // Phase 2: Analysis
-      this.tui.updatePhase(2, 9, 'Analysis')
+      // Phase 2: Analysis (Still in macro phase 1)
+      this.tui.updatePhase(1, 2, 'Validation')
       await this.analyzeProject()
       
-      // Phase 3: Queue Preparation
-      this.tui.updatePhase(3, 9, 'Queue Preparation')
+      // Phase 3: Queue Preparation (Complete macro phase 1)
+      this.tui.updatePhase(1, 3, 'Analysis')
       await this.fileQueue.addFiles(files)
-      this.tui.updateQueue(files.length, files.length)
+      this.tui.updateQueue(files.length)
       
-      // Phase 4: Processing
-      this.tui.updatePhase(4, 9, 'Processing')
+      // Phase 4: Processing (Start macro phase 2)
+      this.tui.updatePhase(2, 1, 'Preparation')
       await this.processFiles()
       
       // Phase 5: Validation
@@ -258,8 +270,7 @@ export class DocumentProcessor {
             state: 'busy',
             file: path.relative(this.config.projectPath, file),
             operation,
-            progress,
-            timeElapsed: `${Math.round((Date.now() - startTime) / 1000)}s`
+            progress
           })
         })
         
@@ -277,8 +288,7 @@ export class DocumentProcessor {
         this.workerPool.updateStats(workerId, workerStats)
         
         this.tui.updateWorker(workerId, {
-          state: 'idle',
-          stats: workerStats
+          state: 'idle'
         })
         
         this.tui.log('INFO', `Completed: ${path.basename(file)}`, workerId)
@@ -294,8 +304,7 @@ export class DocumentProcessor {
         
         this.tui.updateWorker(workerId, {
           state: 'error',
-          file: path.relative(this.config.projectPath, file),
-          stats: workerStats
+          file: path.relative(this.config.projectPath, file)
         })
         
         this.tui.log('ERROR', `Failed: ${path.basename(file)} - ${error.message}`, workerId)
@@ -307,7 +316,7 @@ export class DocumentProcessor {
     }
     
     // Worker complete
-    this.tui.updateWorker(workerId, { state: 'complete' })
+    this.tui.updateWorker(workerId, { state: 'complete' as any })
   }
 
   /**
