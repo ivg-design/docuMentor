@@ -53,21 +53,21 @@ class DocumentorWorker {
    */
   private async handleCommand(msg: CommandMessage): Promise<void> {
     switch (msg.type) {
-      case 'init':
-        await this.initialize(msg.data)
-        break
-      case 'start':
-        await this.start()
-        break
-      case 'pause':
-        this.pause()
-        break
-      case 'resume':
-        this.resume()
-        break
-      case 'stop':
-        this.stop()
-        break
+    case 'init':
+      await this.initialize(msg.data)
+      break
+    case 'start':
+      await this.start()
+      break
+    case 'pause':
+      this.pause()
+      break
+    case 'resume':
+      this.resume()
+      break
+    case 'stop':
+      this.stop()
+      break
     }
   }
 

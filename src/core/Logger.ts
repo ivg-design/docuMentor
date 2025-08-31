@@ -5,7 +5,9 @@
 
 import * as fs from 'fs'
 import * as path from 'path'
-import { tuiAdapter } from './TUIAdapter'
+import { TUIAdapter } from './TUIAdapter'
+
+const tuiAdapter = new TUIAdapter({ project: '', output: '', enabled: false })
 import { formatLocalTimestamp } from '../utils/datetime'
 
 export type LogLevel = 'debug' | 'info' | 'warning' | 'error' | 'success'

@@ -73,7 +73,8 @@ export class DocumentPipeline {
       }
       
     } catch (error) {
-      throw new Error(`Pipeline failed for ${filePath}: ${error.message}`)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      throw new Error(`Pipeline failed for ${filePath}: ${errorMessage}`)
     }
   }
 

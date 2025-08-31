@@ -13,8 +13,11 @@ import { SecureFileOps } from '../../core/SecureFileOps'
 import { PasswordBridge } from '../../core/PasswordBridge'
 import { spawn } from 'child_process'
 import { expandPath } from '../../utils/paths'
-import { tuiAdapter } from '../../core/TUIAdapter'
-import { phaseManager } from '../../core/PhaseManager'
+import { TUIAdapter } from '../../core/TUIAdapter'
+import { PhaseManager } from '../../core/PhaseManager'
+
+const tuiAdapter = new TUIAdapter({ project: '', output: '', enabled: false })
+const phaseManager = new PhaseManager()
 import { Logger } from '../../core/Logger'
 import { LockFileManager } from '../../core/LockFileManager'
 import { ClaudeClient } from '../../core/ClaudeClient'
@@ -378,7 +381,7 @@ class DocumentEngine {
   private async performGeneration(): Promise<void> {
     // Main documentation generation using Claude
     // This is where most of the AI work happens
-    const docs = await this.docGenerator.generateDocumentation(this.projectPath)
+    const docs = await this.docGenerator.generateDocumentation(this.projectPath, '')
   }
 
   private async performEnhancement(): Promise<void> {

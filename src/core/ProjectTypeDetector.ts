@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises'
 import * as path from 'path'
-import { ClaudeClient } from './ClaudeClient'
+import { ClaudeAPIClient } from './efficient/ClaudeAPIClient'
 
 /**
  * Represents the different types of projects that can be detected
@@ -65,14 +65,10 @@ export interface ProjectIndicators {
  * Uses Claude AI for intelligent detection instead of hardcoded heuristics.
  */
 export class ProjectTypeDetector {
-  private claudeClient: ClaudeClient
+  private claudeClient: ClaudeAPIClient
 
   constructor() {
-    this.claudeClient = new ClaudeClient({
-      model: 'claude-3-sonnet-20240229',
-      temperature: 0.2, // Lower temperature for more consistent detection
-      maxTokens: 1000
-    })
+    this.claudeClient = new ClaudeAPIClient()
   }
 
   private readonly MONOREPO_INDICATORS = [
@@ -138,23 +134,23 @@ export class ProjectTypeDetector {
     try {
       const prompt = this.buildAIPrompt(projectPath, indicators)
 
-      const response = await this.claudeClient.generateDocumentation({
-        type: 'analysis',
-        content: prompt,
-        context: `Project: ${projectPath}`,
-        instructions: [
-          'Analyze the project structure and indicators',
-          'Determine the most appropriate project type',
-          'Provide confidence score and clear reasoning',
-          'Return response in specified JSON format'
-        ],
-        constraints: [
-          'Must choose from: monorepo, library, tools, or application',
-          'Confidence must be between 0.0 and 1.0',
-          'Provide at least 2 reasoning points',
-          'Base decision on actual indicators, not assumptions'
-        ]
-      })
+      const fullPrompt = `${prompt}
+
+Context: Project: ${projectPath}
+
+Instructions:
+- Analyze the project structure and indicators
+- Determine the most appropriate project type
+- Provide confidence score and clear reasoning
+- Return response in specified JSON format
+
+Constraints:
+- Must choose from: monorepo, library, tools, or application
+- Confidence must be between 0.0 and 1.0
+- Provide at least 2 reasoning points
+- Base decision on actual indicators, not assumptions`
+
+      const response = await this.claudeClient.generateDocumentation(fullPrompt)
 
       // Parse AI response
       return this.parseAIResponse(response, indicators)

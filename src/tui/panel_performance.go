@@ -47,20 +47,20 @@ func (p *PerformancePanel) Draw(screen tcell.Screen) {
 	// CPU section
 	cpuStart := x
 	tview.Print(screen, "CPU: ", cpuStart, y, 5, tview.AlignLeft, tcell.ColorWhite)
-	p.drawInlineBar(screen, cpuStart+5, y, 10, p.metrics.CPU, tcell.ColorGreen)
-	cpuPercent := fmt.Sprintf(" %3.0f%%", p.metrics.CPU)
+	p.drawInlineBar(screen, cpuStart+5, y, 10, float64(p.metrics.CPU), tcell.ColorGreen)
+	cpuPercent := fmt.Sprintf(" %3d%%", p.metrics.CPU)
 	tview.Print(screen, cpuPercent, cpuStart+15, y, 5, tview.AlignLeft, tcell.ColorWhite)
 	
 	// Memory section
 	memStart := x + sectionWidth
 	tview.Print(screen, "MEM: ", memStart, y, 5, tview.AlignLeft, tcell.ColorWhite)
-	p.drawInlineBar(screen, memStart+5, y, 10, p.metrics.Memory, tcell.ColorBlue)
-	memInfo := fmt.Sprintf(" %3.0f%%", p.metrics.Memory)
+	p.drawInlineBar(screen, memStart+5, y, 10, float64(p.metrics.Memory), tcell.ColorBlue)
+	memInfo := fmt.Sprintf(" %3d%%", p.metrics.Memory)
 	tview.Print(screen, memInfo, memStart+15, y, 5, tview.AlignLeft, tcell.ColorWhite)
 	
 	// Disk section
 	diskStart := x + (sectionWidth * 2)
-	diskText := fmt.Sprintf("DISK: %.0fMB/s", p.metrics.Disk)
+	diskText := fmt.Sprintf("DISK: %dMB/s", p.metrics.DiskIO)
 	tview.Print(screen, diskText, diskStart, y, sectionWidth-2, tview.AlignLeft, tcell.ColorYellow)
 	
 	// Network section
@@ -122,15 +122,15 @@ func (p *PerformancePanel) GetMetrics() PerformanceMetrics {
 
 // GetHighestUsage returns the highest resource usage
 func (p *PerformancePanel) GetHighestUsage() (string, float64) {
-	highest := p.metrics.CPU
+	highest := float64(p.metrics.CPU)
 	name := "CPU"
 	
-	if p.metrics.Memory > highest {
-		highest = p.metrics.Memory
+	if float64(p.metrics.Memory) > highest {
+		highest = float64(p.metrics.Memory)
 		name = "Memory"
 	}
-	if p.metrics.Disk > highest {
-		highest = p.metrics.Disk
+	if float64(p.metrics.DiskIO) > highest {
+		highest = float64(p.metrics.DiskIO)
 		name = "Disk"
 	}
 	if p.metrics.Network > highest {
@@ -143,20 +143,20 @@ func (p *PerformancePanel) GetHighestUsage() (string, float64) {
 
 // IsResourceCritical checks if any resource is above threshold
 func (p *PerformancePanel) IsResourceCritical(threshold float64) bool {
-	return p.metrics.CPU > threshold ||
-		p.metrics.Memory > threshold ||
-		p.metrics.Disk > threshold ||
+	return float64(p.metrics.CPU) > threshold ||
+		float64(p.metrics.Memory) > threshold ||
+		float64(p.metrics.DiskIO) > threshold ||
 		p.metrics.Network > threshold
 }
 
 // GetHealthStatus returns overall health status
 func (p *PerformancePanel) GetHealthStatus() string {
-	maxUsage := p.metrics.CPU
-	if p.metrics.Memory > maxUsage {
-		maxUsage = p.metrics.Memory
+	maxUsage := float64(p.metrics.CPU)
+	if float64(p.metrics.Memory) > maxUsage {
+		maxUsage = float64(p.metrics.Memory)
 	}
-	if p.metrics.Disk > maxUsage {
-		maxUsage = p.metrics.Disk
+	if float64(p.metrics.DiskIO) > maxUsage {
+		maxUsage = float64(p.metrics.DiskIO)
 	}
 	
 	switch {

@@ -412,7 +412,8 @@ export class ObsidianIntegration {
     }
 
     // Generate new content using DocGenerator
-    const generatedContent = await this.docGenerator.generateDocumentation(sourceFile, baseDoc)
+    const baseContent = baseDoc ? (typeof baseDoc === 'string' ? baseDoc : baseDoc.content) : ''
+    const generatedContent = await this.docGenerator.generateDocumentation(sourceFile, baseContent)
 
     // Create document structure
     const doc: ProcessedDocument = {

@@ -1,7 +1,9 @@
 import chalk from 'chalk'
 import { existsSync, writeFileSync } from 'fs'
 import { resolve } from 'path'
-import { tuiAdapter } from '../core/TUIAdapter'
+import { TUIAdapter } from '../core/TUIAdapter'
+
+const tuiAdapter = new TUIAdapter({ project: '', output: '', enabled: false })
 
 export type DisplayMode = 'normal' | 'raw' | 'debug' | 'quiet';
 

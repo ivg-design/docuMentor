@@ -342,4 +342,64 @@ export class TUIInterface {
   get enabled(): boolean {
     return this.isEnabled && this.isConnected
   }
+  
+  // ========== Compatibility Methods ==========
+  
+  /**
+   * Start TUI (compatibility method)
+   */
+  start(lockPath?: string): void {
+    // TUI is already started in constructor if enabled
+    // lockPath parameter ignored for compatibility
+    this.log('INFO', 'TUI started')
+  }
+  
+  /**
+   * Log info message (compatibility method)
+   */
+  logInfo(message: string): void {
+    this.log('INFO', message)
+  }
+  
+  /**
+   * Log error message (compatibility method)
+   */
+  logError(message: string): void {
+    this.log('ERROR', message)
+  }
+  
+  /**
+   * Log warning message (compatibility method)
+   */
+  logWarning(message: string): void {
+    this.log('WARN', message)
+  }
+  
+  /**
+   * Log debug message (compatibility method)
+   */
+  logDebug(message: string): void {
+    this.log('DEBUG', message)
+  }
+  
+  /**
+   * Log success message (compatibility method)
+   */
+  logSuccess(message: string): void {
+    this.log('INFO', `✓ ${message}`)
+  }
+  
+  /**
+   * Display debug message (compatibility method)
+   */
+  displayDebug(message: string): void {
+    this.log('DEBUG', message)
+  }
+  
+  /**
+   * Debug log (compatibility method)
+   */
+  debug(message: string): void {
+    this.log('DEBUG', message)
+  }
 }

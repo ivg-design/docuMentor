@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -28,6 +30,11 @@ type TUI struct {
 	// State
 	isRunning bool
 	isPaused  bool
+	
+	// Launcher for Node.js process
+	launcher *Launcher
+	projectPath string
+	outputPath string
 }
 
 // NewTUI creates a new TUI instance
@@ -141,7 +148,7 @@ func (t *TUI) setupKeyboardHandlers() {
 func (t *TUI) Run() error {
 	// Initialize with test data if in test mode
 	if testMode {
-		t.runTestMode()
+		t.startTestMode()
 	}
 	
 	return t.app.Run()
@@ -149,12 +156,26 @@ func (t *TUI) Run() error {
 
 // start begins processing
 func (t *TUI) start() {
+	if t.launcher != nil && t.launcher.IsRunning() {
+		t.logsPanel.AddLog("warn", "Processing already in progress", 0)
+		return
+	}
+	
 	t.isRunning = true
 	t.isPaused = false
-	t.statusPanel.SetRunning("Processing documents...")
-	t.logsPanel.AddLog("info", "Started document processing", 0)
+	t.statusPanel.SetRunning("Starting Node.js process...")
+	t.logsPanel.AddLog("info", "Starting document processing", 0)
 	
-	// In real implementation, would start Node.js processes here
+	// Create and start launcher
+	t.launcher = NewLauncher(t, t.projectPath, t.outputPath)
+	if err := t.launcher.Start(); err != nil {
+		t.logsPanel.AddLog("error", fmt.Sprintf("Failed to start launcher: %v", err), 0)
+		t.statusPanel.SetError("Failed to start processing")
+		t.isRunning = false
+		return
+	}
+	
+	t.statusPanel.SetRunning("Processing documents...")
 }
 
 // togglePause toggles pause state
@@ -165,9 +186,15 @@ func (t *TUI) togglePause() {
 	
 	t.isPaused = !t.isPaused
 	if t.isPaused {
+		if t.launcher != nil {
+			t.launcher.SendControlMessage("pause")
+		}
 		t.statusPanel.SetPaused()
 		t.logsPanel.AddLog("info", "Processing paused", 0)
 	} else {
+		if t.launcher != nil {
+			t.launcher.SendControlMessage("resume")
+		}
 		t.statusPanel.SetRunning("Processing resumed...")
 		t.logsPanel.AddLog("info", "Processing resumed", 0)
 	}
@@ -181,6 +208,9 @@ func (t *TUI) refresh() {
 
 // quit exits the application
 func (t *TUI) quit() {
+	if t.launcher != nil && t.launcher.IsRunning() {
+		t.launcher.Stop()
+	}
 	t.headerPanel.Stop()
 	t.app.Stop()
 }
@@ -243,6 +273,19 @@ func (t *TUI) UpdatePerformance(metrics PerformanceMetrics) {
 	t.app.Draw()
 }
 
+// startTestMode starts the TUI in test mode with simulated data
+func (t *TUI) startTestMode() {
+	t.AddLog("info", "Running in test mode with simulated data", 0)
+	// Simulate some test data
+	for i := 1; i <= 4; i++ {
+		t.UpdateWorker(i, WorkerData{
+			ID:    i,
+			State: WorkerStateIdle,
+			File:  "",
+		})
+	}
+}
+
 // AddLog adds a log entry
 func (t *TUI) AddLog(level, message string, workerID int) {
 	t.logsPanel.AddLog(level, message, workerID)
@@ -261,20 +304,52 @@ func main() {
 	flag.BoolVar(&verbose, "verbose", false, "Enable verbose output")
 	flag.Parse()
 	
+	// Get command and arguments
+	args := flag.Args()
+	
+	// Default values
+	projectPath := "."
+	outputPath := "./docs"
+	
+	// Parse command
+	if len(args) > 0 {
+		command := args[0]
+		if command == "generate" && len(args) > 1 {
+			projectPath = args[1]
+			// Look for --output flag
+			for i, arg := range args {
+				if arg == "--output" && i+1 < len(args) {
+					outputPath = args[i+1]
+				}
+			}
+		}
+	}
+	
 	// Create and run TUI
 	tui := NewTUI()
+	tui.projectPath = projectPath
+	tui.outputPath = outputPath
 	
 	// Set initial project info
 	tui.headerPanel.UpdateProject(ProjectInfo{
-		Name:       "DocuMentor",
+		Name:       filepath.Base(projectPath),
 		Type:       "TypeScript",
 		Framework:  "Node.js",
-		Path:       "/path/to/project",
-		Connection: "localhost:3000",
+		Path:       projectPath,
+		Connection: "Node.js",
 		PID:        os.Getpid(),
-		Output:     "./docs",
-		Lock:       "Free",
+		Output:     outputPath,
+		Lock:       "Ready",
 	})
+	
+	// If not in test mode and command is generate, auto-start
+	if !testMode && len(args) > 0 && args[0] == "generate" {
+		// Delay start to allow TUI to initialize
+		go func() {
+			time.Sleep(500 * time.Millisecond)
+			tui.start()
+		}()
+	}
 	
 	// Run the TUI
 	if err := tui.Run(); err != nil {

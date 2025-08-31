@@ -141,6 +141,7 @@ export class ObsidianFrontmatter {
       }
 
       const request: FrontmatterEnhancementRequest = {
+        content: document.content,
         frontmatter,
         document,
         contentPreview: document.content.substring(0, 500)

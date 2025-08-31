@@ -49,11 +49,13 @@ type FileStats struct {
 
 // PerformanceMetrics represents system performance data
 type PerformanceMetrics struct {
-	CPU       float64
-	Memory    float64
-	Disk      float64
-	Network   float64
-	Throughput float64
+	CPU         int
+	Memory      int
+	MemoryUsed  int
+	MemoryTotal int
+	DiskIO      int
+	Network     float64
+	Throughput  float64
 }
 
 // ProjectInfo represents project information
