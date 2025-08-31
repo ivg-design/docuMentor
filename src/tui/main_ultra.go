@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -24,6 +26,15 @@ type UltraTUI struct {
 	logsPanel        *LogsPanel
 	performancePanel *PerformancePanel
 	statusPanel      *UltraStatusPanel
+	
+	// Process management
+	launcher       *ProcessLauncher
+	messageHandler *MessageHandler
+	
+	// State
+	projectPath string
+	outputPath  string
+	command     string
 }
 
 // NewUltraTUI creates a new ULTRA TUI instance
@@ -40,6 +51,12 @@ func NewUltraTUI() *UltraTUI {
 	tui.logsPanel = NewLogsPanel()
 	tui.performancePanel = NewPerformancePanel()
 	tui.statusPanel = NewUltraStatusPanel()
+	
+	// Create process launcher
+	tui.launcher = NewProcessLauncher(tui)
+	
+	// Create message handler
+	tui.messageHandler = NewMessageHandler(tui)
 	
 	// Create main grid layout matching ULTRA DESIGN exactly
 	tui.setupUltraLayout()
@@ -119,14 +136,26 @@ func (t *UltraTUI) setupKeyboardHandlers() {
 
 // Run starts the ULTRA TUI
 func (t *UltraTUI) Run() error {
-	// Initialize with test data if in test mode
 	if ultraTestMode {
+		// Test mode with simulated data
 		t.runUltraTestMode()
+		// Set initial test data
+		t.headerPanel.UpdateProject("~/github/docuMentor", "./docs", os.Getpid())
+		t.statusPanel.SetMessage("TEST MODE - Press [P] to start simulation")
+	} else {
+		// Real mode - spawn Node.js process
+		t.statusPanel.SetMessage("Starting Node.js process...")
+		
+		// Start the Node.js process
+		if err := t.launcher.Start(t.command, t.projectPath, t.outputPath); err != nil {
+			t.statusPanel.SetError(fmt.Sprintf("Failed to start: %v", err))
+			t.AddLog("ERROR", fmt.Sprintf("Failed to start Node.js process: %v", err), 0)
+			// Continue running TUI to show error
+		} else {
+			t.statusPanel.SetMessage("Processing started...")
+			t.headerPanel.UpdateProject(t.projectPath, t.outputPath, os.Getpid())
+		}
 	}
-	
-	// Set initial data
-	t.headerPanel.UpdateProject("~/github/docuMentor", "./docs", os.Getpid())
-	t.statusPanel.SetMessage("System ready - Press [P] to start processing")
 	
 	return t.app.Run()
 }
@@ -158,13 +187,25 @@ Navigation:
 }
 
 func (t *UltraTUI) pause() {
-	t.statusPanel.SetMessage("Processing paused")
-	t.logsPanel.AddLog("info", "Processing paused by user", 0)
+	if t.launcher != nil && t.launcher.IsRunning() {
+		if err := t.launcher.Pause(); err != nil {
+			t.AddLog("ERROR", fmt.Sprintf("Failed to pause: %v", err), 0)
+		} else {
+			t.statusPanel.SetMessage("Processing paused")
+			t.logsPanel.AddLog("info", "Processing paused by user", 0)
+		}
+	}
 }
 
 func (t *UltraTUI) resume() {
-	t.statusPanel.SetProcessing("src/index.ts", "index.md")
-	t.logsPanel.AddLog("info", "Processing resumed", 0)
+	if t.launcher != nil && t.launcher.IsRunning() {
+		if err := t.launcher.Resume(); err != nil {
+			t.AddLog("ERROR", fmt.Sprintf("Failed to resume: %v", err), 0)
+		} else {
+			t.statusPanel.SetProcessing("Resuming...", "")
+			t.logsPanel.AddLog("info", "Processing resumed", 0)
+		}
+	}
 }
 
 func (t *UltraTUI) toggleRaw() {
@@ -176,6 +217,14 @@ func (t *UltraTUI) toggleDebug() {
 }
 
 func (t *UltraTUI) quit() {
+	// Stop the Node.js process first
+	if t.launcher != nil && t.launcher.IsRunning() {
+		t.statusPanel.SetMessage("Stopping Node.js process...")
+		if err := t.launcher.Stop(); err != nil {
+			t.AddLog("ERROR", fmt.Sprintf("Failed to stop process: %v", err), 0)
+		}
+	}
+	
 	t.headerPanel.Stop()
 	t.statusPanel.Stop()
 	t.app.Stop()
@@ -213,9 +262,46 @@ func main() {
 	flag.BoolVar(&ultraTestMode, "test", false, "Run in test mode with simulated data")
 	flag.Parse()
 	
-	// Create and run ULTRA TUI
-	tui := NewUltraTUI()
+	// Parse command-line arguments
+	args := flag.Args()
 	
+	// Determine command and paths
+	command := "generate" // default command
+	projectPath := "."
+	outputPath := filepath.Join(os.Getenv("HOME"), "obsidian_vault", "docs")
+	
+	if len(args) > 0 {
+		command = args[0]
+		if len(args) > 1 {
+			projectPath = args[1]
+		}
+		if len(args) > 2 {
+			outputPath = args[2]
+		}
+	}
+	
+	// Resolve absolute paths
+	if absProj, err := filepath.Abs(projectPath); err == nil {
+		projectPath = absProj
+	}
+	if absOut, err := filepath.Abs(outputPath); err == nil {
+		outputPath = absOut
+	}
+	
+	// Check if API key is set
+	if os.Getenv("CLAUDE_API_KEY") == "" && !ultraTestMode {
+		fmt.Fprintf(os.Stderr, "Error: CLAUDE_API_KEY environment variable not set\n")
+		fmt.Fprintf(os.Stderr, "Please set it with: export CLAUDE_API_KEY=your-api-key\n")
+		os.Exit(1)
+	}
+	
+	// Create and configure ULTRA TUI
+	tui := NewUltraTUI()
+	tui.command = command
+	tui.projectPath = projectPath
+	tui.outputPath = outputPath
+	
+	// Run the TUI
 	if err := tui.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error running ULTRA TUI: %v\n", err)
 		os.Exit(1)

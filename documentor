@@ -3,6 +3,15 @@
 # DocuMentor launcher with Go TUI integration
 # This script launches the documentor with the Go TUI for visual progress tracking
 
+# Enable debug mode if DEBUG environment variable is set
+if [ ! -z "$DEBUG" ]; then
+  set -x
+fi
+
+# Create a new process group for this script and all its children
+set -m  # Enable job control
+trap '' SIGTTOU  # Ignore terminal output stop signal
+
 # Get the directory of this script
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TUI_DIR="$SCRIPT_DIR/src/tui"
@@ -21,6 +30,11 @@ for arg in "$@"; do
       ;;
   esac
 done
+
+# If efficient mode is enabled, run without TUI
+if [ "$DOCUMENTOR_EFFICIENT" = "true" ]; then
+  USE_TUI=false
+fi
 
 # If not using TUI, run directly
 if [ "$USE_TUI" = false ]; then
@@ -44,13 +58,48 @@ fi
 
 # Create a named pipe for communication
 PIPE=$(mktemp -u)
+if [ -p "$PIPE" ]; then
+  rm -f "$PIPE"
+fi
 mkfifo "$PIPE"
 
-# Cleanup function
+# Ensure pipe was created
+if [ ! -p "$PIPE" ]; then
+  echo "Error: Failed to create communication pipe"
+  exit 1
+fi
+
+# Get our process group ID
+PGID=$$
+
+# Cleanup function - kills entire process group
 cleanup() {
-  rm -f "$PIPE"
-  kill $TUI_PID 2>/dev/null
-  exit $1
+  local exit_code=$1
+  
+  echo "Cleaning up documentor processes..."
+  
+  # Kill all processes in our process group except ourselves
+  # This will kill TUI, Node, monitor, and any other child processes
+  kill -TERM -$PGID 2>/dev/null
+  
+  # Give processes a moment to terminate gracefully
+  sleep 0.5
+  
+  # Force kill any remaining processes in the group
+  kill -9 -$PGID 2>/dev/null
+  
+  # Clean up pipe
+  rm -f "$PIPE" 2>/dev/null
+  
+  # Clean up any stale lock files
+  for arg in "$@"; do
+    if [ -d "$arg" ]; then
+      LOCK_FILE="$arg/.documentor.lock"
+      rm -f "$LOCK_FILE" 2>/dev/null
+    fi
+  done
+  
+  exit $exit_code
 }
 
 # Set up trap for cleanup
@@ -60,10 +109,23 @@ trap 'cleanup $?' EXIT INT TERM
 "$TUI_BINARY" < "$PIPE" &
 TUI_PID=$!
 
+# Give TUI a moment to start
+sleep 0.5
+
+# Verify TUI started successfully
+if ! kill -0 $TUI_PID 2>/dev/null; then
+  echo "Error: TUI failed to start"
+  rm -f "$PIPE"
+  exit 1
+fi
+
 # Run documentor and pipe output to TUI
 (
   # Set environment variable to indicate TUI mode
   export DOCUMENTOR_TUI=true
+  
+  # Add small delay to ensure TUI is ready
+  sleep 0.5
   
   # Run the Node.js documentor
   node "$SCRIPT_DIR/dist/index.js" "$@" > "$PIPE" 2>&1
@@ -84,12 +146,24 @@ TUI_PID=$!
 ) &
 DOCUMENTOR_PID=$!
 
-# Wait for the documentor to complete
-wait $DOCUMENTOR_PID
+# Monitor TUI in background - if it exits, kill everything
+(
+  while kill -0 $TUI_PID 2>/dev/null; do
+    sleep 0.5
+  done
+  # TUI exited - kill the entire process group
+  echo "TUI exited, stopping all processes..."
+  kill -TERM -$PGID 2>/dev/null
+) &
+
+# Wait for documentor to complete
+wait $DOCUMENTOR_PID 2>/dev/null
 DOCUMENTOR_EXIT=$?
 
-# Wait for TUI to exit
-wait $TUI_PID 2>/dev/null
+# If documentor finished successfully, give TUI time to display
+if [ $DOCUMENTOR_EXIT -eq 0 ]; then
+  sleep 2
+fi
 
-# Exit with documentor's exit code
+# Exit with appropriate code
 exit $DOCUMENTOR_EXIT

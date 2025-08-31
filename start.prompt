@@ -1,0 +1,52 @@
+
+  1. review:
+     - Read TUI_IMPLEMENTATION_PLAN.md
+     - Read TUI_LAYOUT_ULTRA_DESIGN.md
+     - Read TUI_FIRST_ARCHITECTURE.md
+     - Read TUI_INTEGRATION_STRATEGY.md
+     - Read TUI_ENTRYPOINT_ARCHITECTURE.md
+     - Read CLAUDE_CLI_INTEGRATION_CRITICAL.md
+     - Read CRITICAL_SYSTEMS_INTEGRATION.md
+     - Read EFFICIENT_ARCHITECTURE_COMPLETE.md
+     - Read EFFICIENT_PIPELINE_REVIEW.md
+  2. CRITICAL_SYSTEMS_INTEGRATION.md - Complete architectural design for 5 systems:
+    - Lockfile System with crash recovery
+    - Template System with customizable output
+    - Config System with enhanced phase manager
+    - Agent-driven Obsidian Enrichment
+    - Agent-driven Intelligent Tag Manager
+  3. IMPLEMENTATION_ROADMAP.md - Step-by-step implementation plan with timeline
+  Lockfile System:
+  - Full state tracking and crash recovery
+  - File-level status management
+  - Auto-save every 5 seconds
+  - Resume capability from interruptions
+  Template System:
+  - Built-in templates (default, obsidian, technical, API)
+  - Custom template support
+  - Handlebars-based rendering
+  - Conditional sections and helpers
+  Config System:
+  - Centralized configuration management
+  - Phase execution control with hooks
+  - Feature flags and experiments
+  - Runtime configuration updates
+  Obsidian Enrichment:
+  - Claude-powered intelligent backlink discovery
+  - Contextual tag generation 
+  - Rich frontmatter creation
+  - linking to files/code in in source folder
+  Intelligent Tag Manager:
+  - Dynamic tag taxonomy creation
+  - Tag relationship mapping
+  - Auto-categorization 
+  - Tag evolution tracking
+  - Tag consolidation (similar naming
+
+This entire system is built around **Claude Code CLI** (`/Users/ivg/.nvm/versions/node/v24.6.0/bin/claude`), **NOT** the Anthropic API!
+use proper --json-stream settings
+Go TUI is the entry point and will be spawning node processes for documentor
+
+The TUI-first efficient pipeline now has all necessary components for a complete, robust, and intelligent documentation generation system. 
+
+ltrathink - ultraconsider - ultrareview - ultraprepare - ultraplan and then ultraimplement

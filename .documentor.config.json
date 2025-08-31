@@ -1,0 +1,71 @@
+{
+  "version": "3.1.0",
+  "project": {
+    "name": "auto-detect",
+    "type": "auto"
+  },
+  "output": {
+    "path": "~/github/obsidian_vault/docs",
+    "format": "obsidian",
+    "features": {
+      "frontmatter": true,
+      "backlinks": true,
+      "tags": {
+        "optimize": true,
+        "hierarchy": true,
+        "minPerDoc": 3
+      },
+      "moc": true,
+      "dataview": true
+    }
+  },
+  "permissions": {
+    "requestPassword": false,
+    "skipOnDenial": true,
+    "importantPaths": ["src", "lib", "config", "docs", "scripts"]
+  },
+  "claude": {
+    "model": "claude-opus-4-1-20250805",
+    "maxTokens": 200000,
+    "temperature": 0.3
+  },
+  "github": {
+    "enabled": false,
+    "accessToken": "",
+    "username": "",
+    "repositories": [],
+    "pollInterval": 5,
+    "documentOnCommit": true,
+    "documentOnPR": true,
+    "ignorePatterns": [
+      "*.min.js",
+      "*.min.css",
+      "package-lock.json",
+      "yarn.lock",
+      "*.map"
+    ]
+  },
+  "watch": {
+    "enabled": false,
+    "paths": [],
+    "interval": 5000,
+    "debounce": 1000,
+    "ignorePatterns": [
+      "**/node_modules/**",
+      "**/.git/**",
+      "**/dist/**",
+      "**/build/**"
+    ]
+  },
+  "phases": [
+    "analysis",
+    "security",
+    "generation",
+    "enhancement",
+    "obsidian-integration",
+    "tag-optimization",
+    "backlink-generation",
+    "verification",
+    "save"
+  ]
+}

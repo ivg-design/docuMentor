@@ -4,7 +4,7 @@
 // Production-ready documentation generator with Claude integration
 
 import { program } from 'commander'
-import { logger } from './cli/display'
+import { Logger } from './core/Logger'
 import { configCommand } from './cli/commands/config'
 import { generateCommand } from './cli/commands/generate'
 import { watchCommand } from './cli/commands/watch'
@@ -52,7 +52,7 @@ try {
   if (error.code === 'commander.help') {
     process.exit(0)
   }
-  logger.error(`Error: ${error.message}`)
+  Logger.error(`Error: ${error.message}`)
   process.exit(1)
 }
 

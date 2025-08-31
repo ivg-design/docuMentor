@@ -1,256 +1,99 @@
 /**
- * Unified Logger System
- * Single source of truth for all logging operations
+ * Logger module for DocuMentor
+ * Provides centralized logging with TUI integration
  */
 
-import * as fs from 'fs'
-import * as path from 'path'
-import { tuiAdapter } from './TUIAdapter'
-import { formatLocalTimestamp } from '../utils/datetime'
-
-export type LogLevel = 'debug' | 'info' | 'warning' | 'error' | 'success'
-
-export interface LogEntry {
-  timestamp: string
-  level: LogLevel
-  message: string
-  context?: string
-  metadata?: any
+export enum LogLevel {
+  DEBUG = 0,
+  INFO = 1,
+  WARN = 2,
+  ERROR = 3
 }
 
-/**
- * Unified Logger - Singleton
- */
-class LoggerClass {
-  private static instance: LoggerClass
-  private logFilePath: string | null = null
-  private writeStream: fs.WriteStream | null = null
-  private isDebugMode: boolean = false
-  private isSilentMode: boolean = false
-  
-  private constructor() {
-    this.isDebugMode = process.env.DOCUMENTOR_DEBUG === 'true'
-    this.isSilentMode = process.env.DOCUMENTOR_QUIET === 'true'
-  }
-  
-  static getInstance(): LoggerClass {
-    if (!LoggerClass.instance) {
-      LoggerClass.instance = new LoggerClass()
+export class Logger {
+  private static instance: Logger
+  private level: LogLevel = LogLevel.INFO
+  private isTUIMode: boolean = process.env.TUI_MODE === 'true'
+
+  private constructor() {}
+
+  static getInstance(): Logger {
+    if (!Logger.instance) {
+      Logger.instance = new Logger()
     }
-    return LoggerClass.instance
+    return Logger.instance
   }
-  
-  /**
-   * Initialize logger with output file
-   */
-  initialize(outputPath: string): void {
-    const logsDir = path.join(outputPath, 'logs')
-    
-    // Create logs directory if it doesn't exist
-    if (!fs.existsSync(logsDir)) {
-      fs.mkdirSync(logsDir, { recursive: true })
-    }
-    
-    // Create log file with timestamp
-    const timestamp = formatLocalTimestamp().replace(/[:.]/g, '-')
-    this.logFilePath = path.join(logsDir, `documentor-${timestamp}.log`)
-    
-    // Create write stream
-    this.writeStream = fs.createWriteStream(this.logFilePath, { flags: 'a' })
+
+  setLevel(level: LogLevel): void {
+    this.level = level
   }
-  
-  /**
-   * Close logger and cleanup
-   */
-  close(): void {
-    if (this.writeStream) {
-      this.writeStream.end()
-      this.writeStream = null
+
+  private shouldLog(level: LogLevel): boolean {
+    return level >= this.level
+  }
+
+  private formatMessage(level: string, message: string): string {
+    const timestamp = new Date().toISOString()
+    return `[${timestamp}] [${level}] ${message}`
+  }
+
+  private output(level: string, message: string): void {
+    if (this.isTUIMode) {
+      // In TUI mode, send as JSON to stdout for TUI to parse
+      const msg = {
+        type: 'log',
+        data: {
+          level: level.toUpperCase(),
+          message,
+          workerID: 0
+        }
+      }
+      console.log(JSON.stringify(msg))
+    } else {
+      // In normal mode, output to stderr
+      console.error(this.formatMessage(level, message))
     }
   }
-  
-  /**
-   * Core logging method
-   */
-  private log(level: LogLevel, message: string, context?: string, metadata?: any): void {
-    // Skip debug messages unless in debug mode
-    if (level === 'debug' && !this.isDebugMode) return
-    
-    // Skip all messages in silent mode except errors
-    if (this.isSilentMode && level !== 'error') return
-    
-    const timestamp = formatLocalTimestamp()
-    
-    // Create log entry
-    const entry: LogEntry = {
-      timestamp,
-      level,
-      message,
-      context,
-      metadata
-    }
-    
-    // Write to file if available
-    this.writeToFile(entry)
-    
-    // Send to TUI (TUI handles its own mode checking)
-    this.sendToTUI(level, message, context)
-  }
-  
-  /**
-   * Write log entry to file
-   */
-  private writeToFile(entry: LogEntry): void {
-    if (!this.writeStream) return
-    
-    // Format for file: timestamp LEVEL [context] message
-    let line = `${entry.timestamp} ${entry.level.toUpperCase().padEnd(7)}`
-    if (entry.context) {
-      line += ` [${entry.context}]`
-    }
-    line += ` ${entry.message}`
-    
-    // Add metadata if present
-    if (entry.metadata) {
-      line += ` | ${JSON.stringify(entry.metadata)}`
-    }
-    
-    this.writeStream.write(line + '\n')
-  }
-  
-  /**
-   * Send log to TUI
-   */
-  private sendToTUI(level: LogLevel, message: string, context?: string): void {
-    // Format message with context if present
-    const formattedMessage = context ? `[${context}] ${message}` : message
-    
-    // Map log levels to TUI levels (TUI uses 'warning' not 'warn')
-    switch (level) {
-    case 'debug':
-      tuiAdapter.debug(formattedMessage)
-      break
-    case 'info':
-      tuiAdapter.logInfo(formattedMessage)
-      break
-    case 'warning':
-      tuiAdapter.logWarning(formattedMessage)
-      break
-    case 'error':
-      tuiAdapter.logError(formattedMessage)
-      break
-    case 'success':
-      tuiAdapter.logSuccess(formattedMessage)
-      break
+
+  debug(message: string): void {
+    if (this.shouldLog(LogLevel.DEBUG)) {
+      this.output('DEBUG', message)
     }
   }
-  
-  /**
-   * Public logging methods
-   */
-  debug(message: string, context?: string, metadata?: any): void {
-    this.log('debug', message, context, metadata)
+
+  info(message: string): void {
+    if (this.shouldLog(LogLevel.INFO)) {
+      this.output('INFO', message)
+    }
   }
-  
-  info(message: string, context?: string, metadata?: any): void {
-    this.log('info', message, context, metadata)
+
+  warn(message: string): void {
+    if (this.shouldLog(LogLevel.WARN)) {
+      this.output('WARN', message)
+    }
   }
-  
-  warn(message: string, context?: string, metadata?: any): void {
-    this.log('warning', message, context, metadata)
+
+  error(message: string, error?: Error): void {
+    if (this.shouldLog(LogLevel.ERROR)) {
+      const msg = error ? `${message}: ${error.message}` : message
+      this.output('ERROR', msg)
+    }
   }
-  
-  warning(message: string, context?: string, metadata?: any): void {
-    this.log('warning', message, context, metadata)
+
+  // Static convenience methods
+  static debug(message: string): void {
+    Logger.getInstance().debug(message)
   }
-  
-  error(message: string | Error, context?: string, metadata?: any): void {
-    const errorMessage = message instanceof Error 
-      ? `${message.message}${message.stack ? '\n' + message.stack : ''}`
-      : message
-    this.log('error', errorMessage, context, metadata)
+
+  static info(message: string): void {
+    Logger.getInstance().info(message)
   }
-  
-  success(message: string, context?: string, metadata?: any): void {
-    this.log('success', message, context, metadata)
+
+  static warn(message: string): void {
+    Logger.getInstance().warn(message)
   }
-  
-  /**
-   * Log with explicit level
-   */
-  logLevel(level: LogLevel, message: string, context?: string, metadata?: any): void {
-    this.log(level, message, context, metadata)
-  }
-  
-  /**
-   * Create a child logger with context
-   */
-  withContext(context: string): ContextLogger {
-    return new ContextLogger(this, context)
-  }
-  
-  /**
-   * Log performance timing
-   */
-  time(label: string): void {
-    console.time(label)
-  }
-  
-  timeEnd(label: string): void {
-    console.timeEnd(label)
-  }
-  
-  /**
-   * Set debug mode
-   */
-  setDebugMode(enabled: boolean): void {
-    this.isDebugMode = enabled
-  }
-  
-  /**
-   * Set silent mode
-   */
-  setSilentMode(enabled: boolean): void {
-    this.isSilentMode = enabled
+
+  static error(message: string, error?: Error): void {
+    Logger.getInstance().error(message, error)
   }
 }
-
-/**
- * Context logger for consistent context in logs
- */
-class ContextLogger {
-  constructor(
-    private logger: LoggerClass,
-    private context: string
-  ) {}
-  
-  debug(message: string, metadata?: any): void {
-    this.logger.debug(message, this.context, metadata)
-  }
-  
-  info(message: string, metadata?: any): void {
-    this.logger.info(message, this.context, metadata)
-  }
-  
-  warn(message: string, metadata?: any): void {
-    this.logger.warn(message, this.context, metadata)
-  }
-  
-  warning(message: string, metadata?: any): void {
-    this.logger.warning(message, this.context, metadata)
-  }
-  
-  error(message: string | Error, metadata?: any): void {
-    this.logger.error(message, this.context, metadata)
-  }
-  
-  success(message: string, metadata?: any): void {
-    this.logger.success(message, this.context, metadata)
-  }
-}
-
-// Export singleton instance
-export const Logger = LoggerClass.getInstance()
-
-// Export types
-export type { LoggerClass, ContextLogger }

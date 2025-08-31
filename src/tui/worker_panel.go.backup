@@ -1,0 +1,222 @@
+package main
+
+import (
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/gdamore/tcell/v2"
+	"github.com/rivo/tview"
+)
+
+// WorkerState is now defined in ultra_data_types.go
+
+// WorkerData is now using WorkerMessageData from ultra_data_types.go
+type WorkerData = WorkerMessageData
+
+// WorkerPanel displays the status of all workers
+type WorkerPanel struct {
+	*tview.Box
+	workers    [4]WorkerData
+	app        *tview.Application
+	lastUpdate time.Time
+}
+
+// NewWorkerPanel creates a new worker panel
+func NewWorkerPanel(app *tview.Application) *WorkerPanel {
+	panel := &WorkerPanel{
+		Box:        tview.NewBox(),
+		app:        app,
+		lastUpdate: time.Now(),
+	}
+	
+	// Initialize workers in idle state
+	for i := 0; i < 4; i++ {
+		panel.workers[i] = WorkerData{
+			WorkerID: i + 1,
+			State:    WorkerStateIdle,
+			Stats:    WorkerStats{},
+		}
+	}
+	
+	panel.SetBorder(false)
+	return panel
+}
+
+// UpdateWorker updates the state of a specific worker
+func (w *WorkerPanel) UpdateWorker(data WorkerData) {
+	if data.WorkerID >= 1 && data.WorkerID <= 4 {
+		w.workers[data.WorkerID-1] = data
+		w.lastUpdate = time.Now()
+		w.app.QueueUpdateDraw(func() {})
+	}
+}
+
+// Draw renders the worker panel
+func (w *WorkerPanel) Draw(screen tcell.Screen) {
+	w.Box.DrawForSubclass(screen, w)
+	x, y, width, height := w.GetInnerRect()
+	
+	if height < 3 {
+		return // Not enough space
+	}
+	
+	// Calculate worker box dimensions
+	workerWidth := width / 4
+	if workerWidth < 20 {
+		workerWidth = 20 // Minimum width
+	}
+	
+	// Draw each worker
+	for i := 0; i < 4; i++ {
+		startX := x + (i * workerWidth)
+		if startX+workerWidth > x+width {
+			break // No more space
+		}
+		w.drawWorker(screen, &w.workers[i], startX, y, workerWidth, height)
+	}
+}
+
+// drawWorker draws a single worker box
+func (w *WorkerPanel) drawWorker(screen tcell.Screen, worker *WorkerData, x, y, width, height int) {
+	// Determine style based on state
+	borderStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite)
+	headerStyle := tcell.StyleDefault.Bold(true)
+	stateColor := tcell.ColorWhite
+	
+	switch worker.State {
+	case WorkerStateBusy:
+		stateColor = tcell.ColorGreen
+		borderStyle = borderStyle.Foreground(tcell.ColorGreen)
+	case WorkerStateBlocked:
+		stateColor = tcell.ColorYellow
+		borderStyle = borderStyle.Foreground(tcell.ColorYellow)
+	case WorkerStateError:
+		stateColor = tcell.ColorRed
+		borderStyle = borderStyle.Foreground(tcell.ColorRed)
+	case WorkerStateComplete:
+		stateColor = tcell.ColorBlue
+		borderStyle = borderStyle.Foreground(tcell.ColorBlue)
+	default:
+		stateColor = tcell.ColorGray
+		borderStyle = borderStyle.Foreground(tcell.ColorGray)
+	}
+	
+	// Draw border
+	w.drawBorder(screen, x, y, width-1, height, borderStyle)
+	
+	// Draw header: [W1] BUSY
+	header := fmt.Sprintf("[W%d] %s", worker.WorkerID, strings.ToUpper(string(worker.State)))
+	headerStyle = headerStyle.Foreground(stateColor)
+	w.drawText(screen, x+1, y, header, width-2, headerStyle)
+	
+	// Draw file name if present
+	if worker.File != "" && y+1 < y+height-1 {
+		file := w.truncate(worker.File, width-2)
+		w.drawText(screen, x+1, y+1, file, width-2, tcell.StyleDefault)
+	}
+	
+	// Draw operation and time if present
+	if worker.Operation != "" && y+2 < y+height-1 {
+		timeStr := ""
+		if worker.TimeElapsed > 0 {
+			timeStr = fmt.Sprintf(" [%ds]", worker.TimeElapsed/1000)
+		}
+		op := w.truncate(worker.Operation+timeStr, width-2)
+		w.drawText(screen, x+1, y+2, op, width-2, tcell.StyleDefault.Dim(true))
+	}
+	
+	// Draw progress bar if present and there's space
+	if worker.Progress > 0 && y+3 < y+height-1 {
+		w.drawProgressBar(screen, x+1, y+3, width-2, worker.Progress)
+	}
+	
+	// Draw stats if idle and there's space
+	if worker.State == WorkerStateIdle && worker.Stats.Completed > 0 && y+2 < y+height-1 {
+		stats := fmt.Sprintf("✓%d ✗%d", worker.Stats.Completed, worker.Stats.Failed)
+		w.drawText(screen, x+1, y+2, stats, width-2, tcell.StyleDefault.Foreground(tcell.ColorGray))
+	}
+}
+
+// drawBorder draws a simple border
+func (w *WorkerPanel) drawBorder(screen tcell.Screen, x, y, width, height int, style tcell.Style) {
+	// Top and bottom borders
+	for i := x; i <= x+width; i++ {
+		screen.SetContent(i, y, '─', nil, style)
+		screen.SetContent(i, y+height-1, '─', nil, style)
+	}
+	
+	// Left and right borders
+	for i := y; i < y+height; i++ {
+		screen.SetContent(x, i, '│', nil, style)
+		screen.SetContent(x+width, i, '│', nil, style)
+	}
+	
+	// Corners
+	screen.SetContent(x, y, '┌', nil, style)
+	screen.SetContent(x+width, y, '┐', nil, style)
+	screen.SetContent(x, y+height-1, '└', nil, style)
+	screen.SetContent(x+width, y+height-1, '┘', nil, style)
+}
+
+// drawText draws text at the specified position
+func (w *WorkerPanel) drawText(screen tcell.Screen, x, y int, text string, maxWidth int, style tcell.Style) {
+	for i, r := range text {
+		if i >= maxWidth {
+			break
+		}
+		screen.SetContent(x+i, y, r, nil, style)
+	}
+}
+
+// drawProgressBar draws a progress bar
+func (w *WorkerPanel) drawProgressBar(screen tcell.Screen, x, y, width, progress int) {
+	if width < 10 {
+		return // Too small for progress bar
+	}
+	
+	// Calculate filled portion
+	filled := (progress * (width - 7)) / 100 // Leave space for percentage
+	
+	screen.SetContent(x, y, '[', nil, tcell.StyleDefault)
+	
+	for i := 0; i < width-7; i++ {
+		if i < filled {
+			screen.SetContent(x+1+i, y, '█', nil, tcell.StyleDefault.Foreground(tcell.ColorGreen))
+		} else {
+			screen.SetContent(x+1+i, y, '░', nil, tcell.StyleDefault.Foreground(tcell.ColorGray))
+		}
+	}
+	
+	screen.SetContent(x+width-6, y, ']', nil, tcell.StyleDefault)
+	
+	// Draw percentage
+	pct := fmt.Sprintf(" %3d%%", progress)
+	for i, r := range pct {
+		screen.SetContent(x+width-5+i, y, r, nil, tcell.StyleDefault)
+	}
+}
+
+// truncate truncates text to fit within maxWidth
+func (w *WorkerPanel) truncate(text string, maxWidth int) string {
+	if len(text) <= maxWidth {
+		return text
+	}
+	if maxWidth <= 3 {
+		return "..."
+	}
+	return text[:maxWidth-3] + "..."
+}
+
+// GetWorkerByID returns a worker by ID
+func (w *WorkerPanel) GetWorkerByID(id int) *WorkerData {
+	if id >= 1 && id <= 4 {
+		return &w.workers[id-1]
+	}
+	return nil
+}
+
+// GetAllWorkers returns all workers
+func (w *WorkerPanel) GetAllWorkers() [4]WorkerData {
+	return w.workers
+}

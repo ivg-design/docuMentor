@@ -57,6 +57,9 @@ export interface DocumentorConfig extends Config {
     excludePaths: string[]
     debounceMs: number
   }
+  experimental?: {
+    efficientMode?: boolean
+  }
 }
 
 // ============================================================================
