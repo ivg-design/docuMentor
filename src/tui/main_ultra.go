@@ -17,7 +17,7 @@ type UltraTUI struct {
 	mainGrid *tview.Grid
 	
 	// All panels
-	headerPanel      *SimpleHeaderPanel
+	headerPanel      *FlexHeaderPanel
 	infoBar          *InfoBarPanel
 	workersPanel     *UltraWorkersPanel
 	controlsPanel    *ControlsPanel
@@ -33,7 +33,7 @@ func NewUltraTUI() *UltraTUI {
 	}
 	
 	// Create all panels
-	tui.headerPanel = NewSimpleHeaderPanel()
+	tui.headerPanel = NewFlexHeaderPanel()
 	tui.infoBar = NewInfoBarPanel()
 	tui.workersPanel = NewUltraWorkersPanel()
 	tui.controlsPanel = NewControlsPanel(tui.app)
@@ -53,13 +53,13 @@ func NewUltraTUI() *UltraTUI {
 // setupUltraLayout creates the ULTRA DESIGN layout
 func (t *UltraTUI) setupUltraLayout() {
 	// Create main grid with exact ULTRA DESIGN specifications
-	// Rows: header(3), infobar(3-with border), workers(4), controls(1), logs(flex), performance(3-with border), status(3-with border)
+	// Rows: header(4 for 2 lines + border), infobar(3-with border), workers(4), controls(1), logs(flex), performance(3-with border), status(3-with border)
 	t.mainGrid = tview.NewGrid().
-		SetRows(3, 3, 4, 1, 0, 3, 3).
+		SetRows(4, 3, 4, 1, 0, 3, 3).
 		SetColumns(0).
 		SetBorders(false)
 	
-	// Row 0: Header (4 lines - modular with title + split panels)
+	// Row 0: Header (4 lines - border + title + 2 content lines)
 	t.mainGrid.AddItem(t.headerPanel, 0, 0, 1, 1, 0, 0, false)
 	
 	// Row 1: Info bar (1 line - phase and stats)

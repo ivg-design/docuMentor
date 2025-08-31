@@ -42,17 +42,33 @@ func (w *UltraWorkersPanel) Draw(screen tcell.Screen) {
 		return
 	}
 	
+	// First, fill the entire background to eliminate black gaps
+	style := tcell.StyleDefault.Background(tcell.ColorDefault)
+	for row := 0; row < height; row++ {
+		for col := 0; col < width; col++ {
+			screen.SetContent(x+col, y+row, ' ', nil, style)
+		}
+	}
+	
 	// Each worker gets 1/4 of width
 	workerWidth := width / 4
 	
 	for i := 0; i < 4; i++ {
 		startX := x + (i * workerWidth)
-		w.drawSingleWorker(screen, &w.workers[i], startX, y, workerWidth-1, height)
+		// Adjust width for even distribution
+		wWidth := workerWidth
+		if i == 3 {
+			// Last worker takes remaining space
+			wWidth = width - (3 * workerWidth)
+		}
+		w.drawSingleWorker(screen, &w.workers[i], startX, y, wWidth, height)
 	}
 }
 
 // drawSingleWorker draws one worker with title + 2 lines
 func (w *UltraWorkersPanel) drawSingleWorker(screen tcell.Screen, worker *WorkerData, x, y, width, height int) {
+	// Check if this is the last worker (W4)
+	isLastWorker := worker.ID == 4
 	// Determine border color based on state
 	borderColor := tcell.ColorDarkGray
 	stateText := "IDLE"
@@ -89,12 +105,20 @@ func (w *UltraWorkersPanel) drawSingleWorker(screen tcell.Screen, worker *Worker
 	for i := 2 + len(title); i < width-1; i++ {
 		screen.SetContent(x+i, y, '─', nil, tcell.StyleDefault.Foreground(borderColor))
 	}
-	screen.SetContent(x+width-1, y, '┐', nil, tcell.StyleDefault.Foreground(borderColor))
+	// Only draw right corner for last worker
+	if isLastWorker {
+		screen.SetContent(x+width-1, y, '┐', nil, tcell.StyleDefault.Foreground(borderColor))
+	} else {
+		screen.SetContent(x+width-1, y, '┬', nil, tcell.StyleDefault.Foreground(borderColor))
+	}
 	
 	// Side borders and content
 	for row := 1; row < 3 && y+row < y+height; row++ {
 		screen.SetContent(x, y+row, '│', nil, tcell.StyleDefault.Foreground(borderColor))
-		screen.SetContent(x+width-1, y+row, '│', nil, tcell.StyleDefault.Foreground(borderColor))
+		// Only draw right border for last worker
+		if isLastWorker {
+			screen.SetContent(x+width-1, y+row, '│', nil, tcell.StyleDefault.Foreground(borderColor))
+		}
 	}
 	
 	// Line 1: File name or status
@@ -113,9 +137,13 @@ func (w *UltraWorkersPanel) drawSingleWorker(screen tcell.Screen, worker *Worker
 		}
 		
 		if line1 != "" {
+			// First clear the entire line
+			for i := 0; i < width-4; i++ {
+				screen.SetContent(x+2+i, y+1, ' ', nil, tcell.StyleDefault)
+			}
+			// Then draw the text
 			for i, r := range line1 {
 				if i < width-4 {
-					screen.SetContent(x+2, y+1, ' ', nil, tcell.StyleDefault)
 					screen.SetContent(x+2+i, y+1, r, nil, tcell.StyleDefault.Bold(worker.State == WorkerStateBusy))
 				}
 			}
@@ -154,7 +182,12 @@ func (w *UltraWorkersPanel) drawSingleWorker(screen tcell.Screen, worker *Worker
 		for i := 1; i < width-1; i++ {
 			screen.SetContent(x+i, y+3, '─', nil, tcell.StyleDefault.Foreground(borderColor))
 		}
-		screen.SetContent(x+width-1, y+3, '┘', nil, tcell.StyleDefault.Foreground(borderColor))
+		// Only draw right corner for last worker
+		if isLastWorker {
+			screen.SetContent(x+width-1, y+3, '┘', nil, tcell.StyleDefault.Foreground(borderColor))
+		} else {
+			screen.SetContent(x+width-1, y+3, '┴', nil, tcell.StyleDefault.Foreground(borderColor))
+		}
 	}
 }
 
