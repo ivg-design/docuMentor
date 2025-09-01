@@ -1,41 +1,32 @@
 {
-  "root": true,
-  "parser": "@typescript-eslint/parser",
-  "parserOptions": {
-    "ecmaVersion": 2022,
-    "sourceType": "module",
-    "project": "./tsconfig.json"
-  },
-  "plugins": [
-    "@typescript-eslint"
-  ],
-  "extends": [
-    "eslint:recommended",
-    "plugin:@typescript-eslint/recommended"
-  ],
-  "env": {
-    "node": true,
-    "es2022": true
-  },
-  "rules": {
-    "@typescript-eslint/no-explicit-any": "off",
-    "@typescript-eslint/no-unused-vars": ["off", { 
-      "argsIgnorePattern": "^_",
-      "varsIgnorePattern": "^_"
-    }],
-    "@typescript-eslint/no-var-requires": "off",
-    "no-console": "off",
-    "semi": ["error", "never"],
-    "quotes": ["error", "single"],
-    "indent": ["error", 2],
-    "comma-dangle": ["error", "never"]
-
-  },
-  "ignorePatterns": [
-    "node_modules",
-    "dist",
-    "build",
-    "*.js",
-    "*.d.ts"
-  ]
+	"root": true,
+	"parser": "@typescript-eslint/parser",
+	"parserOptions": {
+		"ecmaVersion": 2022,
+		"sourceType": "module",
+		"project": "./tsconfig.json"
+	},
+	"plugins": ["@typescript-eslint"],
+	"extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended"],
+	"env": {
+		"node": true,
+		"es2022": true
+	},
+	"rules": {
+		"@typescript-eslint/no-explicit-any": "off",
+		"@typescript-eslint/no-unused-vars": [
+			"off",
+			{
+				"argsIgnorePattern": "^_",
+				"varsIgnorePattern": "^_"
+			}
+		],
+		"@typescript-eslint/no-var-requires": "off",
+		"no-console": "off",
+		"semi": ["error", "never"],
+		"quotes": ["error", "single"],
+		"indent": ["error", 2],
+		"comma-dangle": ["error", "never"]
+	},
+	"ignorePatterns": ["node_modules", "dist", "build", "*.js", "*.d.ts"]
 }
