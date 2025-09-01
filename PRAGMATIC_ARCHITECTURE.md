@@ -72,30 +72,31 @@ Three review agents analyzed the architecture against your 10 LEGITIMATE REQUIRE
 
 ```mermaid
 graph TB
-    subgraph "User Interfaces"
-        CLI[CLI Commands]
-        WEB[Web Dashboard]
-    end
+    subgraph "Single Binary Executable"
+        CLI[CLI Entry Point]
+        
+        subgraph "Embedded Services"
+            WEB[Web Dashboard Server]
+            PIPELINE[Pipeline Manager]
+            WORKERS[Worker Pool]
+            CONFIG[Config Manager]
+        end
 
-    subgraph "Core Engine"
-        PIPELINE[Pipeline Manager]
-        WORKERS[Worker Pool]
-        CONFIG[Config Manager]
-    end
+        subgraph "Integrations"
+            CLAUDE[Claude CLI]
+            OBSIDIAN[Obsidian Processor]
+            GITHUB[GitHub Watcher]
+        end
 
-    subgraph "Integrations"
-        CLAUDE[Claude CLI]
-        OBSIDIAN[Obsidian Processor]
-        GITHUB[GitHub Watcher]
-    end
-
-    subgraph "Support Systems"
-        LOCK[Lock Manager]
-        STATE[State Tracker]
-        PROGRESS[Progress Reporter]
+        subgraph "Support Systems"
+            LOCK[Lock Manager]
+            STATE[State Tracker]
+            PROGRESS[Progress Reporter]
+        end
     end
 
     CLI --> PIPELINE
+    CLI --> WEB
     WEB --> PROGRESS
     
     PIPELINE --> WORKERS
@@ -109,10 +110,30 @@ graph TB
     GITHUB --> PIPELINE
     CONFIG --> PIPELINE
 
-    style PIPELINE fill:#f9f,stroke:#333,stroke-width:4px
+    style CLI fill:#f9f,stroke:#333,stroke-width:4px
     style CLAUDE fill:#fbb,stroke:#333,stroke-width:4px
     style OBSIDIAN fill:#bbf,stroke:#333,stroke-width:4px
 ```
+
+### **CLI-First Architecture**
+
+All functionality is initiated through the CLI, which can spawn embedded services as needed:
+
+```bash
+# Start documentation with embedded dashboard
+documentor generate ./src --output ./docs --dashboard
+
+# Start in watch mode with dashboard
+documentor watch ./src --dashboard
+
+# Just generate docs (no dashboard)
+documentor generate ./src --output ./docs
+
+# Start only the dashboard to monitor existing process
+documentor dashboard --port 3333
+```
+
+The web dashboard is NOT a separate service but an embedded server that the CLI can optionally start.
 
 ### **Simplified File Structure**
 
@@ -120,8 +141,8 @@ graph TB
 documentor/
 ├── src/
 │   ├── cli/
-│   │   ├── index.ts              # CLI entry point
-│   │   └── commands.ts            # generate, watch, verify
+│   │   ├── index.ts              # CLI entry point (MAIN)
+│   │   └── commands.ts            # generate, watch, verify, dashboard
 │   │
 │   ├── core/
 │   │   ├── Pipeline.ts            # 5-phase orchestrator
@@ -135,9 +156,9 @@ documentor/
 │   │   └── GitHubWatcher.ts       # Repository monitoring
 │   │
 │   ├── dashboard/
-│   │   ├── server.ts              # Express + Socket.io
+│   │   ├── server.ts              # Embedded Express + Socket.io
 │   │   ├── api.ts                 # REST endpoints
-│   │   └── public/
+│   │   └── static/                # Bundled UI assets
 │   │       └── index.html         # Simple monitoring UI
 │   │
 │   └── utils/
@@ -150,8 +171,29 @@ documentor/
 │   └── document.md
 │
 ├── .documentor.json               # Default configuration
-└── package.json
+├── package.json
+└── build.js                       # Binary bundler (pkg/nexe)
 ```
+
+### **Single Binary Build Process**
+
+```bash
+# Development
+npm run dev
+
+# Build single executable binary
+npm run build:binary
+
+# Output: documentor (Linux/Mac) or documentor.exe (Windows)
+# Size: ~50-60MB with Node.js runtime embedded
+```
+
+The binary includes:
+- Node.js runtime
+- All TypeScript code (compiled)
+- Static dashboard assets
+- Templates
+- Default configuration
 
 ### **Simplified Processing Pipeline**
 
@@ -364,7 +406,23 @@ The pragmatic architecture delivers:
 - All 10 required features
 - 72% reduction in code complexity
 - Clear extension points for future features
+- **Single self-contained binary executable**
+- **CLI-first approach with embedded dashboard**
 - Maintainable, testable, deployable solution
+
+### **Binary Distribution**
+
+```bash
+# Single file distribution
+documentor          # 50-60MB self-contained executable
+
+# Usage - everything starts from CLI
+./documentor generate ./my-project --dashboard
+./documentor watch ./my-project
+./documentor dashboard  # Monitor existing processes
+```
+
+**Key Point**: The entire system is packaged as a single binary that users can download and run immediately without any dependencies, npm installs, or complex setup. The web dashboard is embedded and started by the CLI when needed.
 
 **Bottom Line**: Build the features users need, not the architecture you might want someday.
 
