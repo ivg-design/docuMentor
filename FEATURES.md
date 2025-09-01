@@ -1,92 +1,174 @@
 # DocuMentor Features
 
-## **Core Features**
+## **Architecture Overview**
 
-build first with a bash/cli mode so that claude can run and test and see all output
+Build first with a bash/cli mode so that Claude can run and test and see all output
 
-### 0. **CLAUDE CLI NOT API !!!!**
-- Uses Claude CLI to analyze and document code
-- this is the most important key feature!
-- using --print --json-stream toolset
-- using claud code cli efficiently - by letting it decide what tools to use and when
-- configurable --dangerously-skip-permissions flag
+---
 
-### 1. **Generate Documentation**
+## **1. Claude CLI Bridge**
+
+### Core Integration
+- Uses Claude CLI to analyze and document code (NOT API!)
+- This is the most important key feature!
+- Using `--print --json-stream` toolset
+- Letting Claude Code CLI decide what tools to use and when
+- Configurable `--dangerously-skip-permissions` flag
+
+### Document Generation
 - Create comprehensive documentation from any codebase
 - Supports multiple languages (JS, TS, Python, Go, Rust, Java, C/C++)
 - Automatic code analysis and understanding
+- Recursive documentation generation
+- Meta-documentation capabilities
 
-### 2. **Watch Mode**
-- Monitor local folders for changes
-- Auto-regenerate docs when files change
-- Configurable debounce timing
-- Real-time documentation updates
+### Processing Features
+- Process multiple files simultaneously
+- Configurable worker count (default: 4)
+- Faster documentation generation
+- Efficient resource utilization
+- Automatic retry with backoff
 
-### 3. **GitHub Monitoring**
+---
+
+## **2. Obsidian Bridge**
+
+### Vault Integration
+- Generate Obsidian-compatible markdown
+- Create automatic backlinks between documents
+- Add rich frontmatter metadata
+- Dataview-compatible fields
+- Graph view support
+
+### Advanced Features
+- Smart hierarchical tagging system
+- AI-driven tag review/consolidation/optimization and reporting
+- Map of Content (MOC) generation
+- Mermaid functional diagrams
+- Advanced tables
+
+### Output Optimization
+- Obsidian-optimized markdown formatting
+- Frontmatter with metadata
+- Backlinks and tags
+- Graph view support
+
+---
+
+## **3. Dashboard Bridge**
+
+### Web Interface
+- Real-time monitoring interface at `http://localhost:3333`
+- View processing progress across 9 phases
+- See logs, metrics, and worker status
+- Collapsible log entries
+
+### Monitoring Features
+- RAW JSON mode to see Claude input/output
+- Claude action view (reading/thinking/writing)
+- Real-time progress tracking
+- Performance metrics (CPU, memory, disk I/O)
+- Process PID tracking
+- Event-driven updates with real-time streaming
+
+### Dashboard Controls
+- Start/stop/pause processing
+- Queue management
+- Worker pool control
+- Phase navigation
+
+---
+
+## **4. GitHub Bridge**
+
+### Repository Monitoring
 - Watch GitHub repositories
 - Webhook integration for auto-updates
 - Track changes across branches
 - Automatic documentation on push events
 
-### 4. **Web Dashboard**
-- Real-time monitoring interface at `http://localhost:3333`
-- View processing progress across 9 phases
-- See logs, metrics, and worker status
-- RAW JSON mode to see Claude input/output
-- Claude action view (reading/thinking/writing)
-- Collapsible log entries
+### Integration Features
+- GitHub API token storage
+- Branch tracking
+- Commit-triggered documentation
+- Pull request documentation
 
-### 5. **Obsidian Vault Integration**
-- Generate Obsidian-compatible markdown
-- Create automatic backlinks between documents
-- Add rich frontmatter metadata
-- Smart hierarchical tagging system
-- AI driven tag review/consolidation/optimization and reporting
-- Map of Content (MOC) generation
-- Dataview-compatible fields
-- Mermaid functional diagrams
-- Advanced tables
+---
 
-### 6. **Project Analysis**
+## **5. File System Bridge**
+
+### Watch Mode
+- Monitor local folders for changes
+- Auto-regenerate docs when files change
+- Configurable debounce timing
+- Real-time documentation updates
+
+### Smart Processing
+- Skip documentation files (README/CHANGELOG)
+- Code-first approach (prioritizes source code)
+- Large file handling (skip minified/huge files)
+- Smart file filtering (process only relevant code)
+
+### File Management
+- Path management
+- Custom output paths
+- Template system
+- File permission handling
+
+---
+
+## **6. Configuration System**
+
+### Core Configuration
+- Persistent settings via `.documentor.config.json`
+- Configurable phase order
+- Configurable task order
+- Template system
+
+### Advanced Settings
+- GitHub API token storage
+- Custom output paths
+- Worker count configuration
+- Processing phase adjustments
+
+---
+
+## **7. Security & Reliability System**
+
+### Security Features
+- Password Bridge for secure file handling
+- Permission management for elevated access
+- Secure token storage
+- Safety validation for operations
+
+### Reliability Features
+- Lock file management (prevent concurrent processing)
+- System for tracking processed/processing projects
+- Ensure no competing agents review same repo
+- Error recovery with automatic retry
+
+---
+
+## **8. Analysis Engine**
+
+### Project Analysis
 - Deep project structure analysis
-- Detect project type (monorepo, library, application, tools or something else)
+- Detect project type (monorepo, library, application, tools)
 - Map dependencies and relationships
 - Identify critical vs. non-critical files
 - Code complexity evaluation
 
-### 7. **Self-Documentation**
-- Document the DocuMentor tool itself
-- Recursive documentation generation
-- Meta-documentation capabilities
-
-### 8. **Code Verification**
+### Verification System
 - Verify generated documentation accuracy
 - Check for missing or outdated docs
 - Validate documentation completeness
-- Safety validation for operations
+- Self-documentation capabilities
 
-### 10. **Parallel Processing**
-- Process multiple files simultaneously
-- Configurable worker count (default: 4)
-- Faster documentation generation
-- Efficient resource utilization
+---
 
-### 11. Config System
-- configurable phase order via
-- configurable task order
-- path management
-- github api token storage
-- persistent settings via .documentor.config.json in root
-- template system
-- custom output paths
+## **9. Processing Pipeline**
 
-### 12. Lockfile system
-- system for keeping track of processed/processing projects/folders/repositories
-- making sure there are no competing agents reviewing the same repo
-
-## **Processing Pipeline**
-
-### 9-Phase Documentation System:
+### 9-Phase Documentation System
 1. **Initialization** - Setup and configuration
 2. **Validation** - Check permissions and requirements
 3. **Analysis** - Deep code analysis
@@ -97,34 +179,16 @@ build first with a bash/cli mode so that claude can run and test and see all out
 8. **Integration** - Integrate with Obsidian/output format
 9. **Finalization** - Complete and save documentation
 
-## **Additional Capabilities**
+---
 
-### Smart Processing
-- **Skip Documentation Files** - Ignores existing README/CHANGELOG files
-- **Code-First Approach** - Prioritizes source code over documentation
-- **Large File Handling** - Automatically skips minified/huge files
-- **Smart File Filtering** - Processes only relevant code files
-
-### Security & Reliability
-- **Password Bridge** - Secure handling of protected files
-- **Permission Management** - Handle elevated access requirements
-- **Lock File Management** - Prevent concurrent processing
-- **Error Recovery** - Automatic retry with backoff
-
-### Monitoring & Metrics
-- **Real-time Progress** - Track processing status
-- **Performance Metrics** - CPU, memory, disk I/O monitoring
-- **Process PID Tracking** - Monitor specific process resources
-- **Event-Driven Updates** - Real-time event streaming
-
-
-## **Usage Modes**
+## **10. Usage Interfaces**
 
 ### CLI Mode
 ```bash
 documentor generate <project-path> --output <docs-path>
 documentor watch <project-path>
 documentor verify <docs-path>
+documentor self-document
 ```
 
 ### Dashboard Mode
@@ -138,36 +202,47 @@ npm run dashboard
 - Programmatic access via TypeScript/JavaScript
 - Event-driven architecture
 - Full control over processing pipeline
+- Custom integration capabilities
 
-## **Output Formats**
+---
 
-### Markdown
+## **11. Output Formats**
+
+### Standard Markdown
 - Standard markdown files
 - GitHub-compatible formatting
 - Clean, readable documentation
 
-### Obsidian
+### Obsidian Format
 - Obsidian-optimized markdown
-- Frontmatter with metadata
-- Backlinks and tags
-- Graph view support
+- Rich frontmatter metadata
+- Automatic backlinks
+- Tag hierarchies
 
-##  **Performance**
+### Custom Templates
+- Custom templates for different file types
+- Configurable documentation structure
+- Flexible tagging strategies
+- Template inheritance system
 
+---
+
+## **12. Performance Features**
+
+### Optimization
 - Processes hundreds of files in minutes
 - Parallel processing with worker pools
 - Efficient memory management
 - Incremental processing support
 
-##  **Customization**
-
-- Custom templates for different file types
-- Configurable documentation structure
-- Flexible tagging strategies
-- Adjustable processing phases
+### Scalability
+- Configurable worker pools
+- Queue-based processing
+- Stream-based file handling
+- Memory-efficient operations
 
 ---
 
-**Version**: TBD
-**License**: MIT
-**Built with**: TypeScript, Claude CLI, Express, Socket.io`
+**Version**: TBD  
+**License**: MIT  
+**Built with**: TypeScript, Claude CLI, Express, Socket.io
